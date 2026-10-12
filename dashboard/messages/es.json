@@ -1501,7 +1501,11 @@
     "payloadFieldDefaultRaw": "Carga útil por defecto raw (sobrescribe la anterior)",
     "payloadFieldOverride": "Campos de carga útil que sobrescriben los valores de la solicitud",
     "payloadFieldOverrideRaw": "Carga útil de sobrescritura raw (sobrescribe la anterior)",
-    "payloadFieldFilter": "Campos para filtrar/eliminar de las solicitudes"
+    "payloadFieldFilter": "Campos para filtrar/eliminar de las solicitudes",
+    "fieldSessionAffinityLabel": "Afinidad de sesión",
+    "fieldSessionAffinityDesc": "Mantiene cada conversación en la misma cuenta; cambia automáticamente si no está disponible.",
+    "fieldSessionAffinityTtlLabel": "Duración de la vinculación",
+    "fieldSessionAffinityTtlDesc": "Duración Go, por ejemplo 1h o 24h. Cambiar la prioridad no mueve conversaciones existentes."
   },
   "openCodeConfig": {
     "noProvidersTitle": "No hay proveedores configurados",

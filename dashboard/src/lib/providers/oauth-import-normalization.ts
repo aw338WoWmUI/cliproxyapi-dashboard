@@ -47,18 +47,20 @@ export function normalizeImportedOAuthCredential(
 }
 
 function normalizeClaudeCredential(content: Record<string, unknown>): NormalizationResult {
-  // Claude credentials typically have refresh_token and may have accessToken or access_token
-  if (!content.refresh_token && !content.refreshToken) {
-    // Check for alternate structures
-    if (content.claudeAiOauth && typeof content.claudeAiOauth === "object") {
-      const oauth = content.claudeAiOauth as Record<string, unknown>;
-      if (oauth.refreshToken || oauth.refresh_token) {
-        return { ok: true, normalizedContent: JSON.stringify(content) };
-      }
-    }
+  // Native Claude exports also contain unrelated MCP tokens; import only Claude OAuth.
+  const oauth = content.claudeAiOauth && typeof content.claudeAiOauth === "object"
+    ? content.claudeAiOauth as Record<string, unknown> : content;
+  const { accessToken, refreshToken: nativeRefreshToken, expiresAt, ...metadata } = oauth;
+  const refreshToken = oauth.refresh_token ?? nativeRefreshToken;
+  if (typeof refreshToken !== "string" || !refreshToken.trim()) {
     return { ok: false, error: "Claude credential must contain refresh_token" };
   }
-  return { ok: true, normalizedContent: JSON.stringify(content) };
+  const expired = typeof expiresAt === "number" && Number.isFinite(expiresAt) && Math.abs(expiresAt) <= 8.64e15
+    ? new Date(expiresAt).toISOString() : oauth.expired;
+  return { ok: true, normalizedContent: JSON.stringify({
+    ...metadata, type: "claude", refresh_token: refreshToken,
+    access_token: oauth.access_token ?? accessToken, expired,
+  }) };
 }
 
 function normalizeGeminiCredential(content: Record<string, unknown>): NormalizationResult {
@@ -70,11 +72,26 @@ function normalizeGeminiCredential(content: Record<string, unknown>): Normalizat
 }
 
 function normalizeCodexCredential(content: Record<string, unknown>): NormalizationResult {
-  // Codex/OpenAI credentials
-  if (!content.refresh_token && !content.api_key && !content.accessToken) {
+  const tokens = content.tokens && typeof content.tokens === "object" && !Array.isArray(content.tokens)
+    ? content.tokens as Record<string, unknown> : content;
+  if (!tokens.refresh_token && !tokens.api_key && !tokens.accessToken && !tokens.access_token) {
     return { ok: false, error: "Codex credential must contain refresh_token, api_key, or accessToken" };
   }
-  return { ok: true, normalizedContent: JSON.stringify(content) };
+  let email = tokens.email;
+  if (!email && typeof tokens.id_token === "string") {
+    try {
+      // Display metadata only; the upstream verifies the actual credential.
+      const claims: unknown = JSON.parse(Buffer.from(tokens.id_token.split(".")[1] ?? "", "base64url").toString("utf8"));
+      if (claims && typeof claims === "object" && "email" in claims && typeof claims.email === "string") email = claims.email;
+    } catch {
+      // Non-JWT tokens remain usable without an email label.
+    }
+  }
+  return { ok: true, normalizedContent: JSON.stringify({
+    ...tokens, type: "codex", access_token: tokens.access_token ?? tokens.accessToken,
+    email,
+    last_refresh: content.last_refresh ?? tokens.last_refresh,
+  }) };
 }
 
 function normalizeCopilotCredential(content: Record<string, unknown>): NormalizationResult {

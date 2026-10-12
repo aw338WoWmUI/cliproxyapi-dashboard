@@ -1506,7 +1506,11 @@
     "payloadFieldDefaultRaw": "原始默认请求体（覆盖 default）",
     "payloadFieldOverride": "用于覆盖请求值的请求体字段",
     "payloadFieldOverrideRaw": "原始覆盖请求体（覆盖 override）",
-    "payloadFieldFilter": "要从请求中筛除的字段"
+    "payloadFieldFilter": "要从请求中筛除的字段",
+    "fieldSessionAffinityLabel": "会话亲和性",
+    "fieldSessionAffinityDesc": "同一会话固定使用同一账号；账号不可用时自动故障转移。",
+    "fieldSessionAffinityTtlLabel": "会话绑定保留时间",
+    "fieldSessionAffinityTtlDesc": "Go 时间格式，例如 1h 或 24h。调整账号优先级不会迁移已有会话。"
   },
   "openCodeConfig": {
     "noProvidersTitle": "尚未配置提供商",

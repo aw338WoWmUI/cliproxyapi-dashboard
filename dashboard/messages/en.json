@@ -1506,7 +1506,11 @@
     "payloadFieldDefaultRaw": "Raw default payload (overrides default)",
     "payloadFieldOverride": "Payload fields that override request values",
     "payloadFieldOverrideRaw": "Raw override payload (overrides override)",
-    "payloadFieldFilter": "Fields to filter/remove from requests"
+    "payloadFieldFilter": "Fields to filter/remove from requests",
+    "fieldSessionAffinityLabel": "Session affinity",
+    "fieldSessionAffinityDesc": "Keep each conversation on the same account; automatically fail over when unavailable.",
+    "fieldSessionAffinityTtlLabel": "Session binding lifetime",
+    "fieldSessionAffinityTtlDesc": "Go duration, for example 1h or 24h. Changing account priority does not move existing conversations."
   },
   "openCodeConfig": {
     "noProvidersTitle": "No providers configured",
