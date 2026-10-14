@@ -1510,7 +1510,8 @@
     "fieldSessionAffinityLabel": "会话亲和性",
     "fieldSessionAffinityDesc": "同一会话固定使用同一账号；账号不可用时自动故障转移。",
     "fieldSessionAffinityTtlLabel": "会话绑定保留时间",
-    "fieldSessionAffinityTtlDesc": "Go 时间格式，例如 1h 或 24h。调整账号优先级不会迁移已有会话。"
+    "fieldSessionAffinityTtlDesc": "Go 时间格式，例如 1h 或 24h。调整账号优先级不会迁移已有会话。",
+    "sessionAffinityTtlInvalid": "请输入正数 Go 时间，例如 1h 或 24h。"
   },
   "openCodeConfig": {
     "noProvidersTitle": "尚未配置提供商",

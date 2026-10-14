@@ -24,6 +24,12 @@ class PriorityTest(unittest.TestCase):
         stale = self.account("stale", "1970-01-01T00:00:00Z")
         self.assertEqual(priorities([error, missing, stale], 1), {})
 
+    def test_equal_reset_accounts_share_priority(self):
+        accounts = [self.account("a", "2027-01-01T00:00:00Z"),
+                    self.account("b", "2027-01-01T00:00:00Z"),
+                    self.account("c", "2027-02-01T00:00:00Z")]
+        self.assertEqual(priorities(accounts, 0), {"a": 2, "b": 2, "c": 1})
+
     def test_codex_weekly_quota_can_be_the_only_primary_window(self):
         account = {"provider": "codex", "auth_index": "pro", "groups": [{
             "id": "primary-window", "label": "168h Window",

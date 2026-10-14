@@ -6,6 +6,7 @@ import { prisma } from "@/lib/db";
 import { env } from "@/lib/env";
 import { logger } from "@/lib/logger";
 import { fetchWithRetry } from "@/lib/fetch-utils";
+import { parseConfigYaml } from "@/lib/config-yaml";
 
 const BACKEND_API_URL = env.CLIPROXYAPI_MANAGEMENT_URL;
 const MANAGEMENT_API_KEY = env.MANAGEMENT_API_KEY;
@@ -305,6 +306,13 @@ async function proxyRequest(
           );
         }
         body = rawBody;
+        if (normalizedPath === "config.yaml") {
+          try {
+            parseConfigYaml(rawBody);
+          } catch (error) {
+            return NextResponse.json({ error: error instanceof Error ? error.message : "Invalid config.yaml" }, { status: 400 });
+          }
+        }
       }
 
       // GitLab OAuth bootstrap: upstream expects GET with query params (client_id,

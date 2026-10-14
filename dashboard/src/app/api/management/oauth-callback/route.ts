@@ -281,6 +281,7 @@ export async function POST(request: NextRequest) {
       }
 
       const callbackTarget = new URL(callbackPath);
+      if (provider === PROVIDERS.GEMINI_CLI) callbackTarget.searchParams.set("provider", provider);
       callbackTarget.searchParams.set("code", callbackParams.code);
       callbackTarget.searchParams.set("state", callbackParams.state);
       resolvedState = callbackParams.state;

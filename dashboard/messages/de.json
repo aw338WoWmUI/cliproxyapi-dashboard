@@ -1510,7 +1510,8 @@
     "fieldSessionAffinityLabel": "Sitzungsbindung",
     "fieldSessionAffinityDesc": "Jede Unterhaltung bleibt beim selben Konto; bei Ausfall wird automatisch gewechselt.",
     "fieldSessionAffinityTtlLabel": "Dauer der Sitzungsbindung",
-    "fieldSessionAffinityTtlDesc": "Go-Dauer, zum Beispiel 1h oder 24h. Prioritätsänderungen verschieben bestehende Unterhaltungen nicht."
+    "fieldSessionAffinityTtlDesc": "Go-Dauer, zum Beispiel 1h oder 24h. Prioritätsänderungen verschieben bestehende Unterhaltungen nicht.",
+    "sessionAffinityTtlInvalid": "Gib eine positive Go-Dauer ein, zum Beispiel 1h oder 24h."
   },
   "openCodeConfig": {
     "noProvidersTitle": "Keine Anbieter konfiguriert",

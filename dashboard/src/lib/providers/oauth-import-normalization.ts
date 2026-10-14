@@ -74,7 +74,8 @@ function normalizeGeminiCredential(content: Record<string, unknown>): Normalizat
 function normalizeCodexCredential(content: Record<string, unknown>): NormalizationResult {
   const tokens = content.tokens && typeof content.tokens === "object" && !Array.isArray(content.tokens)
     ? content.tokens as Record<string, unknown> : content;
-  if (!tokens.refresh_token && !tokens.api_key && !tokens.accessToken && !tokens.access_token) {
+  const apiKey = tokens.api_key ?? content.OPENAI_API_KEY;
+  if (!tokens.refresh_token && !apiKey && !tokens.accessToken && !tokens.access_token) {
     return { ok: false, error: "Codex credential must contain refresh_token, api_key, or accessToken" };
   }
   let email = tokens.email;
@@ -89,6 +90,7 @@ function normalizeCodexCredential(content: Record<string, unknown>): Normalizati
   }
   return { ok: true, normalizedContent: JSON.stringify({
     ...tokens, type: "codex", access_token: tokens.access_token ?? tokens.accessToken,
+    ...(apiKey ? { api_key: apiKey } : {}),
     email,
     last_refresh: content.last_refresh ?? tokens.last_refresh,
   }) };

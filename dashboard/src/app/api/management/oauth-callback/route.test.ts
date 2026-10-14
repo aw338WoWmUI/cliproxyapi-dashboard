@@ -34,5 +34,6 @@ describe("OAuth callback relay", () => {
     expect(callback.pathname).toBe(path);
     expect(callback.searchParams.get("code")).toBe("code-value");
     expect(callback.searchParams.get("state")).toBe("state-value");
+    expect(callback.searchParams.get("provider")).toBe(provider === "gemini-cli" ? provider : null);
   });
 });

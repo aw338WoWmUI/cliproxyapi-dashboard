@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/toast";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { API_ENDPOINTS } from "@/lib/api-endpoints";
-import { mergeConfigYaml } from "@/lib/config-yaml";
+import { isValidGoDuration, mergeConfigYaml } from "@/lib/config-yaml";
 import AgentConfigEditor from "@/components/config/agent-config-editor";
 import ConfigPreview from "@/components/config/config-preview";
 import yaml from "js-yaml";
@@ -272,6 +272,11 @@ export default function ConfigPage() {
 
   const executeSave = async () => {
     if (!config || !originalConfig) return;
+    const ttl = config.routing["session-affinity-ttl"];
+    if (ttl !== undefined && !isValidGoDuration(ttl)) {
+      showToast(t("sessionAffinityTtlInvalid"), "error");
+      return;
+    }
 
     setSaving(true);
 

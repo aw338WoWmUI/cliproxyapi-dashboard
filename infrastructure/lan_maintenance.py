@@ -40,7 +40,9 @@ def priorities(accounts, now):
                 eligible.append((reset, str(account["auth_index"])))
         result.update({index: 0 for index in depleted})
         eligible.sort()
-        result.update({index: len(eligible) - rank for rank, (_, index) in enumerate(eligible)})
+        resets = sorted(set(reset for reset, _ in eligible))
+        reset_priorities = {reset: len(resets) - rank for rank, reset in enumerate(resets)}
+        result.update({index: reset_priorities[reset] for reset, index in eligible})
     return result
 
 

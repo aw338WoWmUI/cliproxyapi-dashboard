@@ -10,6 +10,9 @@ function normalize(provider: "claude" | "codex", input: unknown) {
 }
 
 describe("native subscription imports", () => {
+  it("normalizes API-key-mode Codex auth.json", () => {
+    expect(normalize("codex", { auth_mode: "api-key", OPENAI_API_KEY: "test-key" })).toMatchObject({ type: "codex", api_key: "test-key" });
+  });
   it("flattens Claude OAuth without copying unrelated service credentials", () => {
     const result = normalize("claude", {
       mcpOAuth: { secret: "do-not-copy" },

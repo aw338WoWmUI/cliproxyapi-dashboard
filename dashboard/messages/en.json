@@ -1510,7 +1510,8 @@
     "fieldSessionAffinityLabel": "Session affinity",
     "fieldSessionAffinityDesc": "Keep each conversation on the same account; automatically fail over when unavailable.",
     "fieldSessionAffinityTtlLabel": "Session binding lifetime",
-    "fieldSessionAffinityTtlDesc": "Go duration, for example 1h or 24h. Changing account priority does not move existing conversations."
+    "fieldSessionAffinityTtlDesc": "Go duration, for example 1h or 24h. Changing account priority does not move existing conversations.",
+    "sessionAffinityTtlInvalid": "Enter a positive Go duration, for example 1h or 24h."
   },
   "openCodeConfig": {
     "noProvidersTitle": "No providers configured",
