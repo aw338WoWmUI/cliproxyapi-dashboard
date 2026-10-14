@@ -833,7 +833,8 @@ async function fetchCopilotQuota(
   authIndex: string
 ): Promise<QuotaGroup[] | { error: string }> {
   try {
-    const response = await fetch(`${CLIPROXYAPI_MANAGEMENT_URL}/api-call`, {
+    const v8ManagementUrl = CLIPROXYAPI_MANAGEMENT_URL.replace(/\/v[08]\/management\/?$/, "/v8/management");
+    const response = await fetch(`${v8ManagementUrl}/requests/api-call`, {
       method: "POST",
       headers: {
         Authorization: `Bearer ${MANAGEMENT_API_KEY}`,
