@@ -1017,6 +1017,7 @@
     "cancelButton": "取消",
     "proxyValidationScheme": "代理地址必须以 socks5://、http:// 或 https:// 开头，也可使用“direct”或“none”绕过代理",
     "proxyValidationFormat": "代理地址格式无效。示例：socks5://user:pass@host:port",
+    "sessionAffinityTtlInvalid": "请输入正数 Go 时间，例如 1h 或 24h。",
     "unknownError": "未知错误",
     "failedToFetchYaml": "无法获取当前 config.yaml，未能更新 YAML 配置",
     "failedToSaveYaml": "保存 config.yaml 失败",
@@ -1510,8 +1511,7 @@
     "fieldSessionAffinityLabel": "会话亲和性",
     "fieldSessionAffinityDesc": "同一会话固定使用同一账号；账号不可用时自动故障转移。",
     "fieldSessionAffinityTtlLabel": "会话绑定保留时间",
-    "fieldSessionAffinityTtlDesc": "Go 时间格式，例如 1h 或 24h。调整账号优先级不会迁移已有会话。",
-    "sessionAffinityTtlInvalid": "请输入正数 Go 时间，例如 1h 或 24h。"
+    "fieldSessionAffinityTtlDesc": "Go 时间格式，例如 1h 或 24h。调整账号优先级不会迁移已有会话。"
   },
   "openCodeConfig": {
     "noProvidersTitle": "尚未配置提供商",

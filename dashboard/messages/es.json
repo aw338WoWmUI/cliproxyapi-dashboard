@@ -1012,6 +1012,7 @@
     "cancelButton": "Cancelar",
     "proxyValidationScheme": "La URL del proxy debe empezar por socks5://, http:// o https:// (o usa \"direct\"/\"none\" para omitir)",
     "proxyValidationFormat": "Formato de URL de proxy inválido. Ejemplo: socks5://usuario:pass@host:puerto",
+    "sessionAffinityTtlInvalid": "Introduce una duración Go positiva, por ejemplo 1h o 24h.",
     "unknownError": "Error desconocido",
     "failedToFetchYaml": "Error al obtener el config.yaml actual para la actualización YAML",
     "failedToSaveYaml": "Error al guardar config.yaml",
@@ -1505,8 +1506,7 @@
     "fieldSessionAffinityLabel": "Afinidad de sesión",
     "fieldSessionAffinityDesc": "Mantiene cada conversación en la misma cuenta; cambia automáticamente si no está disponible.",
     "fieldSessionAffinityTtlLabel": "Duración de la vinculación",
-    "fieldSessionAffinityTtlDesc": "Duración Go, por ejemplo 1h o 24h. Cambiar la prioridad no mueve conversaciones existentes.",
-    "sessionAffinityTtlInvalid": "Introduce una duración Go positiva, por ejemplo 1h o 24h."
+    "fieldSessionAffinityTtlDesc": "Duración Go, por ejemplo 1h o 24h. Cambiar la prioridad no mueve conversaciones existentes."
   },
   "openCodeConfig": {
     "noProvidersTitle": "No hay proveedores configurados",
