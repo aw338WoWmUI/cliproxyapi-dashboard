@@ -85,7 +85,7 @@ export const OAUTH_PROVIDERS = [
     id: "copilot" as const,
     name: "GitHub Copilot",
     description: "GitHub Copilot (via GitHub device OAuth)",
-    authEndpoint: "/api/management/github-auth-url?is_webui=true",
+    authEndpoint: "/api/management/copilot-auth-url?is_webui=true",
     requiresCallback: false,
     preConnect: null,
   },

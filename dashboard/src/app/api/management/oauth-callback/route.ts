@@ -52,7 +52,7 @@ const MANAGEMENT_API_KEY = process.env.MANAGEMENT_API_KEY;
 
 const CALLBACK_PATHS: Partial<Record<Provider, string>> = {
   [PROVIDERS.CLAUDE]: `${CLIPROXYAPI_BASE}/anthropic/callback`,
-  [PROVIDERS.GEMINI_CLI]: `${CLIPROXYAPI_BASE}/google/callback`,
+  [PROVIDERS.GEMINI_CLI]: `${CLIPROXYAPI_MANAGEMENT_URL}/oauth-callback`,
   [PROVIDERS.CODEX]: `${CLIPROXYAPI_BASE}/codex/callback`,
   [PROVIDERS.ANTIGRAVITY]: `${CLIPROXYAPI_BASE}/antigravity/callback`,
   [PROVIDERS.IFLOW]: `${CLIPROXYAPI_BASE}/iflow/callback`,

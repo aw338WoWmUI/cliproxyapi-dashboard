@@ -28,7 +28,7 @@ const NON_ADMIN_OAUTH_PATHS = new Set<string>([
   "antigravity-auth-url",
   "iflow-auth-url",
   "kimi-auth-url",
-  "github-auth-url",
+  "copilot-auth-url",
   "kiro-auth-url",
   "cursor-auth-url",
   "kilo-auth-url",
