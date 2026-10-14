@@ -1017,6 +1017,7 @@
     "cancelButton": "Abbrechen",
     "proxyValidationScheme": "Proxy-URL muss mit socks5://, http:// oder https:// beginnen (oder \"direct\"/\"none\" verwenden)",
     "proxyValidationFormat": "Ungültiges Proxy-URL-Format. Beispiel: socks5://user:pass@host:port",
+    "sessionAffinityTtlInvalid": "Gib eine positive Go-Dauer ein, zum Beispiel 1h oder 24h.",
     "unknownError": "Unbekannter Fehler",
     "failedToFetchYaml": "Aktuelle config.yaml für YAML-Aktualisierung konnte nicht abgerufen werden",
     "failedToSaveYaml": "config.yaml konnte nicht gespeichert werden",
@@ -1506,7 +1507,11 @@
     "payloadFieldDefaultRaw": "Roher Standard-Payload (überschreibt Standard)",
     "payloadFieldOverride": "Payload-Felder, die Anfragewerte überschreiben",
     "payloadFieldOverrideRaw": "Roher Override-Payload (überschreibt Override)",
-    "payloadFieldFilter": "Felder, die aus Anfragen gefiltert/entfernt werden sollen"
+    "payloadFieldFilter": "Felder, die aus Anfragen gefiltert/entfernt werden sollen",
+    "fieldSessionAffinityLabel": "Sitzungsbindung",
+    "fieldSessionAffinityDesc": "Jede Unterhaltung bleibt beim selben Konto; bei Ausfall wird automatisch gewechselt.",
+    "fieldSessionAffinityTtlLabel": "Dauer der Sitzungsbindung",
+    "fieldSessionAffinityTtlDesc": "Go-Dauer, zum Beispiel 1h oder 24h. Prioritätsänderungen verschieben bestehende Unterhaltungen nicht."
   },
   "openCodeConfig": {
     "noProvidersTitle": "Keine Anbieter konfiguriert",

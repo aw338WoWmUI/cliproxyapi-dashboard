@@ -182,6 +182,7 @@ export async function GET(request: NextRequest) {
 
     const updateAvailable = latestDigest !== "unknown" && 
       current.digest !== "unknown" && 
+      resolvedCurrentVersion.split("-")[0] !== versionNames[0] &&
       latestDigest !== current.digest;
 
     const versionInfo: VersionInfo = {

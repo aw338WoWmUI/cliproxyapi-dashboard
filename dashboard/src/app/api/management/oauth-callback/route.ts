@@ -52,7 +52,7 @@ const MANAGEMENT_API_KEY = process.env.MANAGEMENT_API_KEY;
 
 const CALLBACK_PATHS: Partial<Record<Provider, string>> = {
   [PROVIDERS.CLAUDE]: `${CLIPROXYAPI_BASE}/anthropic/callback`,
-  [PROVIDERS.GEMINI_CLI]: `${CLIPROXYAPI_BASE}/google/callback`,
+  [PROVIDERS.GEMINI_CLI]: `${CLIPROXYAPI_MANAGEMENT_URL}/oauth-callback`,
   [PROVIDERS.CODEX]: `${CLIPROXYAPI_BASE}/codex/callback`,
   [PROVIDERS.ANTIGRAVITY]: `${CLIPROXYAPI_BASE}/antigravity/callback`,
   [PROVIDERS.IFLOW]: `${CLIPROXYAPI_BASE}/iflow/callback`,
@@ -130,6 +130,8 @@ const fetchAuthFiles = async (): Promise<AuthFileEntry[] | null> => {
     const response = await fetch(`${CLIPROXYAPI_MANAGEMENT_URL}/auth-files`, {
       method: "GET",
       headers: { Authorization: `Bearer ${MANAGEMENT_API_KEY}` },
+      cache: "no-store",
+      signal: AbortSignal.timeout(30_000),
     });
 
     if (!response.ok) {
@@ -279,11 +281,16 @@ export async function POST(request: NextRequest) {
       }
 
       const callbackTarget = new URL(callbackPath);
+      if (provider === PROVIDERS.GEMINI_CLI) callbackTarget.searchParams.set("provider", provider);
       callbackTarget.searchParams.set("code", callbackParams.code);
       callbackTarget.searchParams.set("state", callbackParams.state);
       resolvedState = callbackParams.state;
 
-      const response = await fetch(callbackTarget.toString(), { method: "GET" });
+      const response = await fetch(callbackTarget.toString(), {
+        method: "GET",
+        cache: "no-store",
+        signal: AbortSignal.timeout(30_000),
+      });
       responseStatus = response.status;
 
       if (!response.ok) {

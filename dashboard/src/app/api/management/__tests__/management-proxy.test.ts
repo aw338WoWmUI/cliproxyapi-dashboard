@@ -21,7 +21,7 @@ vi.mock("@/lib/env", () => ({
   },
 }));
 
-import { GET, POST } from "../[...path]/route";
+import { GET, POST, PUT } from "../[...path]/route";
 
 const PROXIED = { error: "upstream-response" };
 
@@ -92,6 +92,15 @@ describe("management proxy allowlist", () => {
     const response = await callRoute("GET", ["xai-auth-url"]);
 
     expect(response.status).toBe(401);
+    expect(mocks.fetchWithRetry).not.toHaveBeenCalled();
+  });
+
+  it.each(["24hours", "0s"])("rejects invalid affinity TTL %s before forwarding config.yaml", async (ttl) => {
+    const request = new NextRequest("http://localhost/api/management/config.yaml", {
+      method: "PUT", body: `routing:\n  session-affinity-ttl: ${ttl}\n`,
+    });
+    const response = await PUT(request, { params: Promise.resolve({ path: ["config.yaml"] }) });
+    expect(response.status).toBe(400);
     expect(mocks.fetchWithRetry).not.toHaveBeenCalled();
   });
 });

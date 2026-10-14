@@ -1017,6 +1017,7 @@
     "cancelButton": "Cancel",
     "proxyValidationScheme": "Proxy URL must start with socks5://, http://, or https:// (or use \"direct\"/\"none\" to bypass)",
     "proxyValidationFormat": "Invalid proxy URL format. Example: socks5://user:pass@host:port",
+    "sessionAffinityTtlInvalid": "Enter a positive Go duration, for example 1h or 24h.",
     "unknownError": "Unknown error",
     "failedToFetchYaml": "Failed to fetch current config.yaml for YAML update",
     "failedToSaveYaml": "Failed to save config.yaml",
@@ -1506,7 +1507,11 @@
     "payloadFieldDefaultRaw": "Raw default payload (overrides default)",
     "payloadFieldOverride": "Payload fields that override request values",
     "payloadFieldOverrideRaw": "Raw override payload (overrides override)",
-    "payloadFieldFilter": "Fields to filter/remove from requests"
+    "payloadFieldFilter": "Fields to filter/remove from requests",
+    "fieldSessionAffinityLabel": "Session affinity",
+    "fieldSessionAffinityDesc": "Keep each conversation on the same account; automatically fail over when unavailable.",
+    "fieldSessionAffinityTtlLabel": "Session binding lifetime",
+    "fieldSessionAffinityTtlDesc": "Go duration, for example 1h or 24h. Changing account priority does not move existing conversations."
   },
   "openCodeConfig": {
     "noProvidersTitle": "No providers configured",

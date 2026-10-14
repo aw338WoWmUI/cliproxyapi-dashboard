@@ -3,6 +3,12 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { capacityQuotaGroups, isShortTermQuotaWindow } from "../quota-window-classification";
 
 describe("isShortTermQuotaWindow", () => {
+  it("classifies Codex by its reported duration even if its primary window is weekly", () => {
+    for (const resetTime of [null, new Date(Date.now() + 1000).toISOString()]) {
+      expect(isShortTermQuotaWindow({ id: "primary-window", label: "168h Window", resetTime })).toBe(false);
+      expect(isShortTermQuotaWindow({ id: "secondary-window", label: "5h Window", resetTime })).toBe(true);
+    }
+  });
   it("keeps explicit short-term markers classified as short-term", () => {
     expect(
       isShortTermQuotaWindow({

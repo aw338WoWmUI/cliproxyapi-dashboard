@@ -1,5 +1,16 @@
 import { describe, expect, it } from "vitest";
-import { mergeConfigYaml, parseConfigYaml } from "@/lib/config-yaml";
+import { isValidGoDuration, mergeConfigYaml, parseConfigYaml } from "@/lib/config-yaml";
+
+describe("session-affinity duration validation", () => {
+  it.each(["1h", "24h", "1h30m", "1.5h", ".5s", "100ms", "1µs"])("accepts %s", (ttl) => {
+    expect(isValidGoDuration(ttl)).toBe(true);
+    expect(parseConfigYaml(`routing:\n  session-affinity-ttl: ${ttl}\n`)).toHaveProperty("routing");
+  });
+  it.each(["", "24hours", "0", "0s", "-1h", "1h garbage", "999999999999h"])("rejects %s before merging YAML", (ttl) => {
+    expect(isValidGoDuration(ttl)).toBe(false);
+    expect(() => parseConfigYaml(`routing:\n  session-affinity-ttl: '${ttl}'\n`)).toThrow(/session-affinity-ttl/);
+  });
+});
 
 describe("parseConfigYaml", () => {
   it("returns empty object for empty/whitespace-only input", () => {

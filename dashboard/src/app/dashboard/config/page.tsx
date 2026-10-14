@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/toast";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { API_ENDPOINTS } from "@/lib/api-endpoints";
-import { mergeConfigYaml } from "@/lib/config-yaml";
+import { isValidGoDuration, mergeConfigYaml } from "@/lib/config-yaml";
 import AgentConfigEditor from "@/components/config/agent-config-editor";
 import ConfigPreview from "@/components/config/config-preview";
 import yaml from "js-yaml";
@@ -24,6 +24,8 @@ export interface QuotaExceededConfig {
 
 export interface RoutingConfig {
   strategy: string;
+  "session-affinity"?: boolean;
+  "session-affinity-ttl"?: string;
 }
 
 export interface TlsConfig {
@@ -270,6 +272,11 @@ export default function ConfigPage() {
 
   const executeSave = async () => {
     if (!config || !originalConfig) return;
+    const ttl = config.routing["session-affinity-ttl"];
+    if (ttl !== undefined && !isValidGoDuration(ttl)) {
+      showToast(t("sessionAffinityTtlInvalid"), "error");
+      return;
+    }
 
     setSaving(true);
 
@@ -330,6 +337,7 @@ export default function ConfigPage() {
         "disable-cooling", "max-retry-credentials", "passthrough-headers",
         "incognito-browser", "kiro-preferred-endpoint", "kiro", "tls", "pprof",
         "claude-header-defaults", "ampcode", "payload", "oauth-model-alias",
+        "routing",
       ] as const;
 
       const yamlChanges: Record<string, unknown> = {};
@@ -454,7 +462,7 @@ export default function ConfigPage() {
     });
   };
 
-  const updateRoutingConfig = (key: keyof RoutingConfig, value: string) => {
+  const updateRoutingConfig = (key: keyof RoutingConfig, value: string | boolean) => {
     if (!config) return;
     setConfig({
       ...config,
