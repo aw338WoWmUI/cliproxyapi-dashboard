@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
-import { env } from "@/lib/env";
+import { getProxyBaseUrl } from "@/lib/management-url";
 
 const HEALTH_CHECK_TIMEOUT_MS = 5000;
 
@@ -31,7 +31,7 @@ async function checkProxy(): Promise<boolean> {
 
     // Use the root endpoint (/) instead of /v0/management which has no route handler
     // and produces 404 warn spam in cliproxyapi logs every healthcheck interval
-    const proxyRoot = env.CLIPROXYAPI_MANAGEMENT_URL.replace(/\/v0\/management\/?$/, "/");
+    const proxyRoot = `${getProxyBaseUrl()}/`;
     const response = await fetch(proxyRoot, {
       method: "GET",
       signal: controller.signal,

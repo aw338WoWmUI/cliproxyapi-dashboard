@@ -7,8 +7,10 @@ import { env } from "@/lib/env";
 import { logger } from "@/lib/logger";
 import { fetchWithRetry } from "@/lib/fetch-utils";
 import { parseConfigYaml } from "@/lib/config-yaml";
+import { getManagementUrl } from "@/lib/management-url";
+import { ERROR_CODE, apiError } from "@/lib/errors";
 
-const BACKEND_API_URL = env.CLIPROXYAPI_MANAGEMENT_URL;
+const BACKEND_API_URL = getManagementUrl();
 const MANAGEMENT_API_KEY = env.MANAGEMENT_API_KEY;
 const FETCH_TIMEOUT_MS = 30_000;
 const RESPONSE_SIZE_LIMIT_BYTES = 10 * 1024 * 1024;
@@ -24,29 +26,26 @@ const ALLOWED_HOST = (() => {
 
 const NON_ADMIN_OAUTH_PATHS = new Set<string>([
   "anthropic-auth-url",
-  "gemini-cli-auth-url",
   "codex-auth-url",
   "antigravity-auth-url",
-  "iflow-auth-url",
   "kimi-auth-url",
+  "kimi-ai-auth-url",
+  "xai-auth-url",
+  "devin-auth-url",
+  "meta-auth-url",
+  // Plugin-served logins (shown only while the plugin is enabled)
+  "gemini-cli-auth-url",
   "copilot-auth-url",
   "kiro-auth-url",
   "cursor-auth-url",
-  "kilo-auth-url",
-  "gitlab-auth-url",
-  "xai-auth-url",
   "get-auth-status",
 ]);
-
 const ALLOWED_MANAGEMENT_PATHS = new Set<string>([
   // Core config
   "config",
   "config.yaml",
 
-  // Usage & logs
-  "usage",
-  "usage/export",
-  "usage/import",
+  // Logs
   "logs",
   "request-error-logs",
   "request-log",
@@ -62,6 +61,7 @@ const ALLOWED_MANAGEMENT_PATHS = new Set<string>([
   "force-model-prefix",
   "request-retry",
   "max-retry-interval",
+  "max-retry-credentials",
 
   // Quota exceeded behavior
   "quota-exceeded/switch-project",
@@ -76,11 +76,8 @@ const ALLOWED_MANAGEMENT_PATHS = new Set<string>([
   // Auth files
   "auth-files",
   "auth-files/models",
-  "auth-files/quota-groups",
   "auth-files/download",
   "auth-files/status",
-  "auth-files/quota-groups/manual",
-  "auth-files/quota-groups/auto/clear",
   "auth-files/fields",
 
   // Providers
@@ -91,16 +88,10 @@ const ALLOWED_MANAGEMENT_PATHS = new Set<string>([
   "oauth-callback",
   "oauth-excluded-models",
   "oauth-model-alias",
-  "oauth-quota-groups",
 
-  // Ampcode
-  "ampcode",
-  "ampcode/upstream-url",
-  "ampcode/upstream-api-key",
-  "ampcode/restrict-management-to-localhost",
-  "ampcode/model-mappings",
-  "ampcode/force-model-mappings",
-  "ampcode/upstream-api-keys",
+  // Plugins (list, store; per-plugin routes in the patterns below)
+  "plugins",
+  "plugin-store",
 
   // Vertex
   "vertex/import",
@@ -112,12 +103,20 @@ const ALLOWED_MANAGEMENT_PATHS = new Set<string>([
   ...NON_ADMIN_OAUTH_PATHS,
 ]);
 
+const PLUGIN_ID = "[a-z0-9._-]+";
+
 const ALLOWED_MANAGEMENT_PATH_PATTERNS = [
   /^[a-z0-9-]+-api-key$/,
   /^request-error-logs\/[a-z0-9._-]+$/i,
   /^request-log-by-id\/[a-z0-9-]+$/i,
   /^model-definitions\/[a-z0-9-]+$/i,
+  new RegExp(`^plugin-store/${PLUGIN_ID}/install$`, "i"),
+  new RegExp(`^plugins/${PLUGIN_ID}(/enabled|/config)?$`, "i"),
 ];
+
+// Upstream PUT replaces the whole plugins.configs.<id> entry: it disables the plugin
+// and drops its store record. Plugin settings are saved with PATCH only.
+const PUT_FORBIDDEN_PATH = new RegExp(`^plugins/${PLUGIN_ID}/config$`, "i");
 
 function isAllowedManagementPath(path: string): boolean {
   return (
@@ -177,14 +176,7 @@ function normalizeAndValidateManagementPath(rawPath: string): string | null {
 }
 
 function isNonAdminAllowedManagementRequest(method: string, path: string): boolean {
-  if (method === "GET" && NON_ADMIN_OAUTH_PATHS.has(path)) {
-    return true;
-  }
-  // GitLab PAT submission requires POST to the same auth-url endpoint.
-  if (method === "POST" && path === "gitlab-auth-url") {
-    return true;
-  }
-  return false;
+  return method === "GET" && NON_ADMIN_OAUTH_PATHS.has(path);
 }
 
 async function proxyRequest(
@@ -229,6 +221,10 @@ async function proxyRequest(
       { error: "Unauthorized" },
       { status: 401 }
     );
+  }
+
+  if (method === "PUT" && PUT_FORBIDDEN_PATH.test(normalizedPath)) {
+    return apiError(ERROR_CODE.VALIDATION_ERROR, "Use PATCH to change plugin settings", 405);
   }
 
   if (!user.isAdmin && !isNonAdminAllowedManagementRequest(method, normalizedPath)) {
@@ -294,7 +290,6 @@ async function proxyRequest(
     }
 
     let body: BodyInit | undefined = undefined;
-    let effectiveMethod = method;
     if (method !== "GET" && method !== "HEAD") {
       const rawBody = await request.text();
       if (rawBody) {
@@ -314,51 +309,17 @@ async function proxyRequest(
           }
         }
       }
-
-      // GitLab OAuth bootstrap: upstream expects GET with query params (client_id,
-      // client_secret, base_url). Accept POST from the UI so the secret is not
-      // placed in a URL, then translate to an upstream GET here.
-      if (
-        method === "POST" &&
-        normalizedPath === "gitlab-auth-url" &&
-        typeof rawBody === "string" &&
-        rawBody.length > 0
-      ) {
-        try {
-          const parsed = JSON.parse(rawBody) as Record<string, unknown>;
-          const isPatRequest =
-            typeof parsed.personal_access_token === "string" ||
-            typeof parsed.token === "string";
-          if (!isPatRequest && typeof parsed.client_id === "string") {
-            const params = new URLSearchParams();
-            params.set("is_webui", "true");
-            params.set("client_id", String(parsed.client_id));
-            if (typeof parsed.client_secret === "string" && parsed.client_secret) {
-              params.set("client_secret", String(parsed.client_secret));
-            }
-            if (typeof parsed.base_url === "string" && parsed.base_url) {
-              params.set("base_url", String(parsed.base_url));
-            }
-            targetUrl.search = `?${params.toString()}`;
-            effectiveMethod = "GET";
-            body = undefined;
-            delete (headers as Record<string, string>)["Content-Type"];
-          }
-        } catch {
-          // Not JSON — let the upstream reject.
-        }
-      }
     }
 
     let response: Response;
     try {
       response = await fetchWithRetry(targetUrl.toString(), {
-        method: effectiveMethod,
+        method,
         headers,
         body,
         cache: "no-store",
         timeout: FETCH_TIMEOUT_MS,
-        disableRetry: effectiveMethod !== "GET" && effectiveMethod !== "PUT",
+        disableRetry: method !== "GET" && method !== "PUT",
       });
     } catch (error) {
       if (error instanceof Error && error.name === "AbortError") {

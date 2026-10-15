@@ -1,5 +1,6 @@
 import crypto from "crypto";
 import { prisma } from "@/lib/db";
+import { getManagementUrl } from "@/lib/management-url";
 import { buildAvailableModelsFromProxy, extractOAuthModelAliases, fetchModelsDevLimits, getProxyUrl, getInternalProxyUrl, inferModelDefinition, type McpEntry, type ModelDefinition } from "@/lib/config-generators/opencode";
 import { buildOhMyOpenCodeConfig } from "@/lib/config-generators/oh-my-opencode";
 import { buildSlimConfig } from "@/lib/config-generators/oh-my-opencode-slim";
@@ -9,6 +10,7 @@ import { validateSlimConfig, type OhMyOpenCodeSlimFullConfig } from "@/lib/confi
 import type { ConfigData, OAuthAccount } from "@/lib/config-generators/shared";
 import { proxyModelsCache, CACHE_TTL, CACHE_KEYS } from "@/lib/cache";
 import { fetchWithRetry } from "@/lib/fetch-utils";
+import { isRecord } from "@/lib/utils";
 
 async function fetchProxyModelsCached(proxyUrl: string, apiKey: string): Promise<ProxyModel[]> {
   const cacheKey = CACHE_KEYS.proxyModels(proxyUrl, apiKey);
@@ -39,9 +41,6 @@ function stableStringify(obj: unknown): string {
   return "{" + pairs.join(",") + "}";
 }
 
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null && !Array.isArray(value);
-}
 
 function readStringArray(value: unknown): string[] | null {
   if (!Array.isArray(value)) return null;
@@ -85,9 +84,7 @@ function getFrozenOverrides(frozenConfig: unknown): OhMyOpenCodeFullConfig | und
 
 async function fetchManagementJson({ path }: ManagementFetchParams) {
   try {
-    const baseUrl =
-      process.env.CLIPROXYAPI_MANAGEMENT_URL ||
-      "http://cliproxyapi:8317/v0/management";
+    const baseUrl = getManagementUrl();
     const res = await fetchWithRetry(`${baseUrl}/${path}`, {
       method: "GET",
       headers: {
