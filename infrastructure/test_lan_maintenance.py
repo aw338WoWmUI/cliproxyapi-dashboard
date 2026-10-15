@@ -1,41 +1,52 @@
+import contextlib
+import io
 import unittest
-from lan_maintenance import priorities
+from unittest.mock import patch
+
+from lan_maintenance import main, pacing_fields
 
 
-class PriorityTest(unittest.TestCase):
-    def account(self, index, reset, remaining=1, provider="claude"):
-        ids = ("seven-day", "five-hour") if provider == "claude" else ("secondary-window", "primary-window")
-        return {"auth_index": index, "provider": provider, "groups": [
-            {"id": ids[0], "resetTime": reset, "remainingFraction": remaining},
-            {"id": ids[1], "remainingFraction": 1},
-        ]}
+def item(index, provider="codex", fresh=True, reason="fresh remaining positive", **target):
+    return {"auth_index": index, "provider": provider, "evidence_fresh": fresh,
+            "status": "active", "reason": reason, "target": target}
 
-    def test_reset_order_depletion_and_provider_isolation(self):
-        accounts = [self.account("later", "2027-02-01T00:00:00Z"),
-                    self.account("soon", "2027-01-01T00:00:00Z"),
-                    self.account("empty", "2026-12-01T00:00:00Z", 0),
-                    self.account("codex", "2027-01-01T00:00:00Z", provider="codex")]
-        self.assertEqual(priorities(accounts, 0), {"empty": 0, "soon": 2, "later": 1, "codex": 1})
 
-    def test_errors_missing_windows_and_stale_resets_do_not_change_priority(self):
-        error = self.account("error", "2027-01-01T00:00:00Z")
-        error["error"] = "quota unavailable"
-        missing = self.account("missing", None)
-        stale = self.account("stale", "1970-01-01T00:00:00Z")
-        self.assertEqual(priorities([error, missing, stale], 1), {})
+class PacingTest(unittest.TestCase):
+    def test_fresh_weights_and_depleted_exclusion(self):
+        plan = [item("healthy", priority=100, weight=812),
+                item("depleted", provider="claude", priority=0, reason="fresh remaining depleted")]
+        self.assertEqual(pacing_fields(plan), {
+            "healthy": {"priority": 100, "weight": 812},
+            "depleted": {"priority": 0, "weight": 0},
+        })
 
-    def test_equal_reset_accounts_share_priority(self):
-        accounts = [self.account("a", "2027-01-01T00:00:00Z"),
-                    self.account("b", "2027-01-01T00:00:00Z"),
-                    self.account("c", "2027-02-01T00:00:00Z")]
-        self.assertEqual(priorities(accounts, 0), {"a": 2, "b": 2, "c": 1})
+    def test_stale_other_providers_and_inactive_accounts_are_untouched(self):
+        inactive = item("disabled", priority=100, weight=10)
+        inactive["status"] = "disabled"
+        self.assertEqual(pacing_fields([
+            item("stale", fresh=False, priority=100, weight=10),
+            item("ag", provider="antigravity", priority=100, weight=10), inactive]), {})
 
-    def test_codex_weekly_quota_can_be_the_only_primary_window(self):
-        account = {"provider": "codex", "auth_index": "pro", "groups": [{
-            "id": "primary-window", "label": "168h Window",
-            "resetTime": "2027-01-01T00:00:00Z", "remainingFraction": 0.53,
-        }]}
-        self.assertEqual(priorities([account], 0), {"pro": 1})
+    def test_invalid_plugin_weights_fail_before_any_apply(self):
+        for weight in [-1, 1_000_001, True, 1.5]:
+            with self.subTest(weight=weight), self.assertRaises(ValueError):
+                pacing_fields([item("bad", priority=100, weight=weight)])
+
+    def test_main_patches_only_routing_fields_and_keeps_collection_and_websockets(self):
+        files = [{"name": "native.json", "auth_index": "native", "provider": "codex", "priority": 1},
+                 {"name": "disabled.json", "auth_index": "disabled", "provider": "codex", "disabled": True},
+                 {"name": "other.json", "auth_index": "other", "provider": "antigravity", "priority": 9}]
+        plan = {"snapshot": {"items": [item("native", priority=100, weight=812),
+                                       item("disabled", priority=100, weight=12)]}}
+        with patch.dict("os.environ", {"MANAGEMENT_API_KEY": "test", "COLLECTOR_API_KEY": "collector"}), \
+                patch("lan_maintenance.request", side_effect=[{}, {"files": files}, plan, {}]) as request, \
+                contextlib.redirect_stdout(io.StringIO()):
+            main()
+        self.assertTrue(request.call_args_list[0].args[0].endswith("/api/usage/collect"))
+        self.assertIn("mode=dry-run", request.call_args_list[2].args[0])
+        self.assertEqual(request.call_args_list[3].args[2:], ("PATCH", {
+            "name": "native.json", "priority": 100, "weight": 812, "websockets": True}))
+        self.assertEqual(request.call_count, 4)
 
 
 if __name__ == "__main__":
