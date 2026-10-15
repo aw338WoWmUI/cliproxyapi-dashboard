@@ -107,9 +107,10 @@ quota-exceeded:
   switch-project: true # Auto-switch to another project when quota exceeded
   switch-preview-model: true # Auto-switch to preview model when quota exceeded
 # Routing strategy for selecting credentials when multiple match.
-# Options: "round-robin" (default), "fill-first"
+# Weighted routing applies Quota Pacer account weights; unset weights default to 1.
+# Other options: "round-robin", "fill-first".
 routing:
-  strategy: "round-robin"
+  strategy: "weighted-round-robin"
 # Enable authentication for the WebSocket API (/v1/ws).
 # Set to true to require API key authentication for WebSocket connections.
 ws-auth: true
