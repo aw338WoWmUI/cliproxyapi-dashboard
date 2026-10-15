@@ -15,6 +15,8 @@ import { createHash } from "crypto";
 import { PrismaPg } from "@prisma/adapter-pg";
 import { PrismaClient } from "@/generated/prisma/client";
 import { canonicalizeOAuthProvider } from "@/lib/providers/constants";
+import { getConfiguredManagementUrl, getManagementUrl } from "@/lib/management-url";
+import { isRecord } from "@/lib/utils";
 
 const PROVIDER = {
   CLAUDE: "claude",
@@ -50,7 +52,7 @@ if (!process.env.DATABASE_URL) {
   process.exit(1);
 }
 
-if (!process.env.CLIPROXYAPI_MANAGEMENT_URL && !process.env.MANAGEMENT_API_KEY) {
+if (!getConfiguredManagementUrl() && !process.env.MANAGEMENT_API_KEY) {
   console.warn("\n⚠️  WARNING: Management API environment variables not set");
   console.warn("   CLIPROXYAPI_MANAGEMENT_URL and MANAGEMENT_API_KEY should be configured");
   console.warn("   Migration will continue but may not fetch remote keys\n");
@@ -63,12 +65,10 @@ const adapter = new PrismaPg({
 const prisma = new PrismaClient({ adapter });
 const isDryRun = process.argv.includes("--dry-run");
 
-const isRecord = (value: unknown): value is Record<string, unknown> =>
-  typeof value === "object" && value !== null;
 
 async function fetchManagementJson(endpoint: string): Promise<unknown> {
   try {
-    const baseUrl = process.env.CLIPROXYAPI_MANAGEMENT_URL || "http://cliproxyapi:8317/v0/management";
+    const baseUrl = getManagementUrl();
     const res = await fetch(`${baseUrl}${endpoint}`, {
       headers: {
         Authorization: `Bearer ${process.env.MANAGEMENT_API_KEY}`,

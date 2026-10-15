@@ -22,7 +22,7 @@ describe("OAuth callback relay", () => {
 
   it.each([
     ["gemini-cli", "/v0/management/oauth-callback"],
-    ["claude", "/anthropic/callback"],
+    ["claude", "/v0/management/oauth-callback"],
   ])("relays %s to its owning callback handler", async (provider, path) => {
     const response = await POST(new NextRequest("https://dashboard.example/api/management/oauth-callback", {
       method: "POST",
@@ -32,8 +32,10 @@ describe("OAuth callback relay", () => {
     expect(response.status).toBe(400);
     const callback = new URL(String(vi.mocked(fetch).mock.calls[1]?.[0]));
     expect(callback.pathname).toBe(path);
-    expect(callback.searchParams.get("code")).toBe("code-value");
-    expect(callback.searchParams.get("state")).toBe("state-value");
-    expect(callback.searchParams.get("provider")).toBe(provider === "gemini-cli" ? provider : null);
+    const options = vi.mocked(fetch).mock.calls[1]?.[1];
+    expect(options?.method).toBe("POST");
+    expect(options?.cache).toBe("no-store");
+    expect(options?.signal).toBeDefined();
+    expect(JSON.parse(String(options?.body))).toMatchObject({ provider, code: "code-value", state: "state-value" });
   });
 });

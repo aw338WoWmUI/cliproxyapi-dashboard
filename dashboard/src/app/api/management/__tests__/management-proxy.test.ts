@@ -16,17 +16,18 @@ vi.mock("@/lib/logger", () => ({
 vi.mock("@/lib/fetch-utils", () => ({ fetchWithRetry: mocks.fetchWithRetry }));
 vi.mock("@/lib/env", () => ({
   env: {
-    CLIPROXYAPI_MANAGEMENT_URL: "http://cliproxyapi:8317/v0/management",
     MANAGEMENT_API_KEY: "test-management-key-16",
   },
 }));
 
-import { GET, POST, PUT } from "../[...path]/route";
+import { DELETE, GET, PATCH, POST, PUT } from "../[...path]/route";
 
 const PROXIED = { error: "upstream-response" };
 
-function callRoute(method: "GET" | "POST", path: string[], url = "http://localhost/api/management") {
-  const handler = method === "GET" ? GET : POST;
+const HANDLERS = { GET, POST, PATCH, PUT, DELETE };
+
+function callRoute(method: keyof typeof HANDLERS, path: string[], url = "http://localhost/api/management") {
+  const handler = HANDLERS[method];
   const request = new NextRequest(`${url}/${path.join("/")}`, { method });
   return handler(request, { params: Promise.resolve({ path }) });
 }
@@ -95,6 +96,53 @@ describe("management proxy allowlist", () => {
     expect(mocks.fetchWithRetry).not.toHaveBeenCalled();
   });
 
+  it.each([
+    ["GET", ["plugin-store"]],
+    ["POST", ["plugin-store", "gemini-cli", "install"]],
+    ["PATCH", ["plugins", "gemini-cli", "enabled"]],
+    ["DELETE", ["plugins", "gemini-cli"]],
+    ["GET", ["plugins", "zcode", "config"]],
+    ["PATCH", ["plugins", "zcode", "config"]],
+  ] as const)("proxies plugin management %s %s for admins", async (method, path) => {
+    const response = await callRoute(method, [...path]);
+
+    expect(response.status).toBe(200);
+    expect(String(mocks.fetchWithRetry.mock.calls[0]?.[0])).toContain(`/v0/management/${path.join("/")}`);
+  });
+
+  it("forwards the store source on plugin install", async () => {
+    await callRoute("POST", ["plugin-store", "gemini-cli", "install"], "http://localhost/api/management?source=official");
+
+    expect(String(mocks.fetchWithRetry.mock.calls[0]?.[0])).toContain("install?source=official");
+  });
+
+  it("forbids non-admins from installing plugins", async () => {
+    mocks.findUnique.mockResolvedValue({ isAdmin: false });
+
+    const response = await callRoute("POST", ["plugin-store", "gemini-cli", "install"]);
+
+    expect(response.status).toBe(403);
+    expect(mocks.fetchWithRetry).not.toHaveBeenCalled();
+  });
+
+  it("forbids non-admins from changing plugin settings", async () => {
+    mocks.findUnique.mockResolvedValue({ isAdmin: false });
+
+    const response = await callRoute("PATCH", ["plugins", "zcode", "config"]);
+
+    expect(response.status).toBe(403);
+    expect(mocks.fetchWithRetry).not.toHaveBeenCalled();
+  });
+
+  it("refuses PUT on plugin settings, which would disable the plugin and drop its store record", async () => {
+    const response = await callRoute("PUT", ["plugins", "zcode", "config"]);
+
+    expect(response.status).toBe(405);
+    expect(await response.json()).toEqual({
+      error: { code: "VALIDATION_ERROR", message: "Use PATCH to change plugin settings" },
+    });
+    expect(mocks.fetchWithRetry).not.toHaveBeenCalled();
+  });
   it.each(["24hours", "0s"])("rejects invalid affinity TTL %s before forwarding config.yaml", async (ttl) => {
     const request = new NextRequest("http://localhost/api/management/config.yaml", {
       method: "PUT", body: `routing:\n  session-affinity-ttl: ${ttl}\n`,

@@ -1,5 +1,36 @@
 # Changelog
 
+## [0.1.88](https://github.com/itsmylife44/cliproxyapi-dashboard/compare/dashboard-v0.1.87...dashboard-v0.1.88) (2026-10-15)
+
+
+### Bug Fixes
+
+* **docker:** raise next build heap to 1536 MB ([#277](https://github.com/itsmylife44/cliproxyapi-dashboard/issues/277)) ([3ea17e0](https://github.com/itsmylife44/cliproxyapi-dashboard/commit/3ea17e0b1710ba28439b781fea7f0a4cfecdef4a))
+
+## [0.1.87](https://github.com/itsmylife44/cliproxyapi-dashboard/compare/dashboard-v0.1.86...dashboard-v0.1.87) (2026-10-15)
+
+
+### Features
+
+* plugin follow-ups and cleanups ([#253](https://github.com/itsmylife44/cliproxyapi-dashboard/issues/253) tickets) ([#274](https://github.com/itsmylife44/cliproxyapi-dashboard/issues/274)) ([d2c48db](https://github.com/itsmylife44/cliproxyapi-dashboard/commit/d2c48db04cae354af3d79879fb43748ba5041055))
+
+
+### Bug Fixes
+
+* align dashboard with CLIProxyAPI v8.0.29 ([#264](https://github.com/itsmylife44/cliproxyapi-dashboard/issues/264)) ([0e35015](https://github.com/itsmylife44/cliproxyapi-dashboard/commit/0e3501521f6199b3498ac34d896860c298cfc08c))
+
+## [0.1.86](https://github.com/itsmylife44/cliproxyapi-dashboard/compare/dashboard-v0.1.85...dashboard-v0.1.86) (2026-10-14)
+
+
+### Features
+
+* **pricing:** price OpenCode Go models and bill DeepSeek peak hours ([#236](https://github.com/itsmylife44/cliproxyapi-dashboard/issues/236)) ([55fa96b](https://github.com/itsmylife44/cliproxyapi-dashboard/commit/55fa96bcdcf5d5c978b392d47e43515ed90f820c))
+
+
+### Bug Fixes
+
+* **update:** compare proxy registry digest, not local image ID ([#241](https://github.com/itsmylife44/cliproxyapi-dashboard/issues/241)) ([0952116](https://github.com/itsmylife44/cliproxyapi-dashboard/commit/0952116e4d5a63507e0c89b0bd532fbb12c62b5c))
+
 ## [0.1.85](https://github.com/itsmylife44/cliproxyapi-dashboard/compare/dashboard-v0.1.84...dashboard-v0.1.85) (2026-10-02)
 
 
