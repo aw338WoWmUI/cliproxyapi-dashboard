@@ -124,6 +124,7 @@ const fetchAuthFiles = async (): Promise<AuthFileEntry[] | null> => {
     const response = await fetch(`${CLIPROXYAPI_MANAGEMENT_URL}/auth-files`, {
       method: "GET",
       headers: { Authorization: `Bearer ${MANAGEMENT_API_KEY}` },
+      signal: AbortSignal.timeout(30_000),
     });
 
     if (!response.ok) {
@@ -277,6 +278,7 @@ export async function POST(request: NextRequest) {
           "Content-Type": "application/json",
           ...(MANAGEMENT_API_KEY ? { Authorization: `Bearer ${MANAGEMENT_API_KEY}` } : {}),
         },
+        signal: AbortSignal.timeout(30_000),
         body: JSON.stringify({
           provider,
           redirect_url: callbackUrl,

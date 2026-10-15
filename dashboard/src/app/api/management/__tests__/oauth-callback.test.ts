@@ -60,6 +60,9 @@ describe("POST /api/management/oauth-callback", () => {
       code: "abc",
       state: "st-123",
     });
+    expect(relay?.[1]?.signal).toBeInstanceOf(AbortSignal);
+    const snapshot = fetchMock.mock.calls.find(([url]) => String(url).endsWith("/auth-files"));
+    expect(snapshot?.[1]?.signal).toBeInstanceOf(AbortSignal);
     // Upstream's verdict (here: unknown state) is passed through.
     expect(response.status).toBe(404);
   });

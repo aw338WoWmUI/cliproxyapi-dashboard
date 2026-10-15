@@ -319,6 +319,7 @@ describe("GET /api/quota - Gemini CLI support (issue #125)", () => {
 describe("GET /api/quota - imported provider normalization", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    fetchMock.mockReset();
   });
 
   it("copilot provider returns supported: true", async () => {
@@ -374,12 +375,16 @@ describe("GET /api/quota - imported provider normalization", () => {
     expect(account.groups).toBeDefined();
   });
 
-  it("uses normalized plugin quota when a Copilot token is private to the provider", async () => {
+  it.each([
+    { ok: false, status: 400 },
+    { ok: true, status: 200, json: async () => ({ status_code: 401, body: "{}" }) },
+    { ok: true, status: 200, json: async () => ({ status_code: 403, body: "{}" }) },
+  ])("uses normalized plugin quota after a legacy Copilot failure: %j", async (legacy) => {
     fetchMock
       .mockResolvedValueOnce({ ok: true, json: async () => ({ files: [{
         auth_index: "plugin-account", provider: "copilot", disabled: false, status: "active",
       }] }), body: { cancel: vi.fn() } })
-      .mockResolvedValueOnce({ ok: false, status: 400, body: { cancel: vi.fn() } })
+      .mockResolvedValueOnce({ ...legacy, body: { cancel: vi.fn() } })
       .mockResolvedValueOnce({ ok: true, json: async () => ({ groups: [{
         displayName: "Premium requests", buckets: [{ remainingFraction: 0.42, resetTime: "2026-11-01T00:00:00Z" }],
       }] }) });

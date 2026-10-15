@@ -9,6 +9,7 @@ import { OpenCodeConfigGenerator, type OmoVariant } from "@/components/opencode-
 import { OhMyOpenCodeConfigGenerator } from "@/components/oh-my-opencode-config-generator";
 import { OhMyOpenCodeSlimConfigGenerator } from "@/components/oh-my-opencode-slim-config-generator";
 import type { OhMyOpenCodeFullConfig } from "@/lib/config-generators/oh-my-opencode-types";
+import { SLIM_PLUGIN } from "@/lib/config-generators/upstream/plugins";
 import type { OhMyOpenCodeSlimFullConfig } from "@/lib/config-generators/oh-my-opencode-slim-types";
 
 interface OAuthAccountEntry {
@@ -112,7 +113,7 @@ export function QuickStartConfigSection({
                 <div className="flex items-center gap-2">
                   <span className="text-[11px] font-semibold text-red-600 shrink-0">{t("firstTimeSetup")}</span>
                   <code className="text-xs font-mono select-all truncate text-red-600">
-                    bunx oh-my-opencode-slim@latest install --no-tui
+                    bunx {SLIM_PLUGIN} install --no-tui
                   </code>
                   <span className="text-[10px] text-red-600/70 shrink-0">{t("runOnce")}</span>
                 </div>

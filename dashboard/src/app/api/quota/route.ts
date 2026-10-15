@@ -855,8 +855,11 @@ async function fetchCopilotQuota(
       }),
     });
 
-    if (!response.ok) {
-      await response.body?.cancel();
+    const apiCallResult: ApiCallResponse = response.ok ? await response.json() : {};
+    const statusCode = Number(apiCallResult.status_code ?? apiCallResult.statusCode ?? 0);
+
+    if (!response.ok || statusCode < 200 || statusCode >= 300) {
+      if (!response.ok) await response.body?.cancel();
       // Plugin-owned credentials may expose quota without exporting a legacy $TOKEN$.
       const native = await fetch(`${CLIPROXYAPI_MANAGEMENT_URL}/quota/fetch`, {
         method: "POST",
@@ -886,13 +889,7 @@ async function fetchCopilotQuota(
       } else {
         await native.body?.cancel();
       }
-      return { error: `Management API call failed: ${response.status}` };
-    }
-
-    const apiCallResult = (await response.json()) as ApiCallResponse;
-    const statusCode = Number(apiCallResult.status_code ?? apiCallResult.statusCode ?? 0);
-
-    if (statusCode < 200 || statusCode >= 300) {
+      if (!response.ok) return { error: `Management API call failed: ${response.status}` };
       let errorDetail = "";
       if (typeof apiCallResult.body === "string") {
         try {
