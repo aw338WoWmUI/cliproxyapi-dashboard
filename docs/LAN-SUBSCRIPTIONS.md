@@ -2,8 +2,9 @@
 
 The LAN deployment uses the CLIProxyAPI fork with OAuth credentials, this dashboard,
 PostgreSQL, Caddy, and a restricted Docker socket proxy. The proxy's management
-listener and dashboard backend stay on loopback; Caddy exposes authenticated HTTPS
-to `192.168.100.0/24`. No client settings on the original workstation are changed.
+listener and dashboard backend stay on loopback. The appliance exposes API-key
+authenticated HTTP inference at `http://192.168.100.36:8318` and HTTPS through
+Caddy. The Cloudflare temporary address exposes the dashboard only.
 
 ## Add another subscription
 
@@ -21,23 +22,32 @@ made directly from other clients.
 
 ## Routing
 
-In **Config**, enable **Session affinity** and set its lifetime, for example `24h`.
+In **Settings → Plugins**, install **Quota Pacer v1.0.19** and keep `auto_apply`
+false with `provider_scope` set to `claude|codex`. The maintenance task below owns
+application of its read-only plans; the plugin's native apply path must stay off.
+
+In **Config**, select **weighted-round-robin**, enable **Session affinity** and
+set its lifetime, for example `24h`. Existing installations must change the
+strategy explicitly: ordinary round robin ignores credential weights. Verify
+the saved strategy before starting the maintenance timer.
 The proxy retains existing account bindings, inherits parent bindings for
-subagents, and rebinds on quota/auth failures. Round robin chooses among accounts
-at the same priority for new conversations.
+subagents, and rebinds on quota failures. Weighted round robin chooses among
+accounts at the same priority for new or rebound conversations.
 
 `infrastructure/lan_maintenance.py` is an optional deployment task, separate from
 the dashboard server. In this appliance it runs every minute with
 `MANAGEMENT_API_KEY` and `COLLECTOR_API_KEY` from a root-readable environment file.
 It uses loopback ports 3000 (dashboard) and 28317 (proxy), collects request usage,
-and sets higher priority on healthy accounts whose shared weekly quota resets
-sooner, independently for Claude and Codex. It skips disabled accounts, leaves
-priority unchanged when quota cannot be determined, and enables Codex upstream
-WebSockets. Model-specific weekly buckets remain visible but do not determine
-this shared-account priority. The proxy handles per-model cooldown/failover.
+and requests Quota Pacer dry-run plans for Claude and Codex. It applies fresh
+priority/weight targets through the host field API, explicitly excluding accounts
+with confirmed depleted quota using weight 0. Disabled accounts, stale evidence
+and other providers are untouched. The plugin reuses a 15-minute probe cache
+between fresh quota checks. Codex upstream WebSockets remain enabled; the proxy
+handles per-model cooldown/failover. Antigravity weights are not changed because
+its model groups can have independent quota.
 
 The task uses the maintained v8 credential management endpoints and modifies
-only priority/WebSocket fields, preserving provider tokens. Stop its systemd timer
+only priority/weight/WebSocket fields, preserving provider tokens. Stop its systemd timer
 before managing account priorities manually. It does not change existing session
 bindings; those are in memory and are cleared when the proxy restarts.
 
