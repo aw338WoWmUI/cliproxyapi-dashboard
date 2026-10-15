@@ -17,9 +17,9 @@ Antigravity stays on native routing: its Gemini and Claude quota groups can diff
 | Sticky sessions and quota failover | [Core configuration](https://github.com/router-for-me/CLIProxyAPI/blob/v8.0.30/config.example.yaml) | Keep native affinity; do not add a scheduler plugin that bypasses it. |
 | Quota-aware account weighting | [Quota Pacer](https://github.com/xg1990/quota-pacer/tree/v1.0.19) | Use read-only plans plus the host field API. |
 | Cross-provider model chains | [Model Router](https://github.com/markhuangai/cpa-plugin-model-router), [Priority Auto Router](https://github.com/Apparux/cpa-plugin-priority-auto-router), [Model Fallback Router](https://github.com/thebtf/cpa-model-fallback-router) | Available alternatives, not configured: this task does not authorize changing existing model IDs or introducing fallback to a different model. Shared-ID native pooling remains available. |
-| Claude/Codex native subscription JSON import | Dashboard fork import normalization | Keep; routing plugins do not normalize these exports. |
+| Subscription JSON import | Upstream already supports credential uploads; fork normalization accepts native nested `claudeAiOauth` and Codex `tokens` exports | Keep only the format compatibility patch; importing JSON itself is not a fork-only feature. |
 | Quota UI and weekly-window classification | Existing Dashboard plus [Quota Monitor](https://github.com/dohwi/cliproxyapi-plugin-quota-monitor) and [Quota Center](https://github.com/RayenAlex/quota-center) | Keep the current dashboard; another UI is optional and would duplicate collection. |
-| Copilot opaque storage token lookup | Current core v8 API-call fix plus Dashboard v8 quota request | Keep; examined quota routers do not replace this compatibility path. |
+| Copilot login/inference and quota display | Installed `github-copilot` plugin already provides login/inference; current core v8 token lookup and Dashboard request fix quota access | Keep only quota compatibility fixes, not an independent provider implementation. |
 
 ## Alternatives not enabled
 
@@ -46,3 +46,7 @@ Deployment makes a private runtime backup before changing config. To roll back, 
 ## Verification
 
 Run `python3 -m unittest discover -s infrastructure -p test_lan_maintenance.py`. Tests cover fresh plans, explicit depleted exclusion, stale/unsupported/disabled accounts, invalid weights, usage collection, WebSocket preservation, and the actual main-to-host-PATCH path. A precise mutation making depleted weight 1 must fail. Runtime acceptance additionally checks plugin registration, zero writes during preview, weighted routing, original affinity settings, successful inference/WebSocket, unchanged local client files and working dashboard quota/login routes. Full real-account refresh/depletion stress is not claimed.
+
+## Reset Bank follow-up
+
+[Codex Auto Reset](https://github.com/JefferyZhang2019/cpa-plugin-codex-auto-reset) is listed in the official store and provides a Reset Bank UI, expiring-credit detection and a manual reset action, alongside automatic redemption. Released v0.1.8 has no independent manual-only switch: both manual actions and automatic workers require an account in `enabled_accounts`; enabling it may immediately redeem a credit near expiry. An empty list prevents redemption but also prevents live credit probing through those actions. Quota Pacer exposes reset-credit count/expiry for weighting but does not provide a redemption button. Reset-credit redemption is an upstream account action, not clearing a local request or waiting for a window reset. No real redemption or automatic redemption was enabled in this deployment. Its separate resource UI is not currently exposed through the Dashboard-only Cloudflare route; installation alone would not make its reset controls reachable there.
