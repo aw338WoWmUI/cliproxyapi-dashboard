@@ -1,7 +1,9 @@
-import type {
-  OhMyOpenCodeFullConfig,
-  OhMyOpenCodePreset,
+import {
+  canonicalizeCategories,
+  type OhMyOpenCodeFullConfig,
+  type OhMyOpenCodePreset,
 } from "./oh-my-opencode-types";
+import { OMO_SCHEMA_URL } from "./upstream/plugins";
 
 export type { OAuthAccount, ConfigData } from "./shared";
 export { type OhMyOpenCodePreset } from "./oh-my-opencode-types";
@@ -20,29 +22,39 @@ function stripVariant(id: string): string {
   return id.replace(/\s*\([^)]*\)\s*$/, "");
 }
 
+// Mirrors upstream 5.1.33 packages/model-core/src/{agent,category}-model-requirements.ts (model ids
+// only, exact duplicates removed; providers and per-rung reasoning are dropped). `minimax-m3` and
+// `MiniMax-M3` are distinct upstream ids (different providers), so both stay.
 export const UPSTREAM_AGENT_CHAINS: Record<string, string[]> = {
-  sisyphus: ["claude-opus-4.6", "kimi-k2.5", "k2p5", "gpt-5.4", "glm-5", "big-pickle"],
-  hephaestus: ["gpt-5.4"],
-  oracle: ["gpt-5.4", "gemini-3.1-pro", "claude-opus-4.6", "glm-5"],
-  prometheus: ["claude-opus-4.6", "gpt-5.4", "glm-5", "gemini-3.1-pro"],
-  metis: ["claude-opus-4.6", "gpt-5.4", "glm-5", "k2p5"],
-  momus: ["gpt-5.4", "claude-opus-4.6", "gemini-3.1-pro", "glm-5"],
-  atlas: ["claude-sonnet-4.6", "kimi-k2.5", "gpt-5.4", "minimax-m2.7"],
-  librarian: ["minimax-m2.7", "minimax-m2.7-highspeed", "claude-haiku-4.5", "gpt-5-nano"],
-  explore: ["grok-code-fast-1", "minimax-m2.7-highspeed", "minimax-m2.7", "claude-haiku-4.5", "gpt-5-nano"],
-  "multimodal-looker": ["gpt-5.4", "kimi-k2.5", "glm-4.6v", "gpt-5-nano"],
-  "sisyphus-junior": ["claude-sonnet-4.6", "kimi-k2.5", "gpt-5.4", "minimax-m2.7", "big-pickle"],
+  sisyphus: ["claude-opus-5-5", "kimi-k3", "gpt-5.6-sol", "glm-5.2", "big-pickle"],
+  hephaestus: ["gpt-6-sol", "gpt-5.6-sol"],
+  oracle: ["gpt-5.6-sol", "gemini-3.1-pro", "claude-opus-5-5", "glm-5.2"],
+  prometheus: ["claude-fable-5-1", "claude-opus-5-5", "kimi-k3"],
+  metis: ["claude-fable-5-1", "claude-opus-5-5", "kimi-k3"],
+  momus: ["gpt-6-astra", "claude-opus-5-5", "gemini-3.1-pro", "glm-5.2"],
+  atlas: ["claude-sonnet-5", "kimi-k3", "gpt-5.6-sol", "minimax-m3", "MiniMax-M3", "minimax-m2.7"],
+  librarian: ["kimi-for-coding-highspeed", "gpt-6-luna-fast", "claude-haiku-5-5", "deepseek-flash", "qwen3.7-plus", "minimax-m2.7"],
+  explore: ["kimi-for-coding-highspeed", "gpt-6-luna-fast", "claude-haiku-5-5", "deepseek-flash", "qwen3.7-plus", "minimax-m2.7"],
+  "multimodal-looker": ["gpt-5.6-sol", "kimi-k3", "glm-4.6v", "gpt-5-nano"],
+  "sisyphus-junior": ["claude-sonnet-5", "kimi-k3", "gpt-5.6-sol", "minimax-m3", "MiniMax-M3", "minimax-m2.7", "big-pickle"],
 };
 
 export const UPSTREAM_CATEGORY_CHAINS: Record<string, string[]> = {
-  "visual-engineering": ["gemini-3.1-pro", "glm-5", "claude-opus-4.6", "k2p5"],
-  ultrabrain: ["gpt-5.4", "gemini-3.1-pro", "claude-opus-4.6", "glm-5"],
-  deep: ["gpt-5.4", "claude-opus-4.6", "gemini-3.1-pro"],
-  artistry: ["gemini-3.1-pro", "claude-opus-4.6", "gpt-5.4"],
-  quick: ["gpt-5.4-mini", "claude-haiku-4.5", "gemini-3-flash", "minimax-m2.7", "gpt-5-nano"],
-  "unspecified-low": ["claude-sonnet-4.6", "gpt-5.3-codex", "kimi-k2.5", "gemini-3-flash", "minimax-m2.7"],
-  "unspecified-high": ["claude-opus-4.6", "gpt-5.4", "glm-5", "k2p5", "kimi-k2.5"],
-  writing: ["gemini-3-flash", "kimi-k2.5", "claude-sonnet-4.6", "minimax-m2.7"],
+  "visual-engineering": ["claude-fable-5-1", "claude-opus-5-5", "kimi-k3"],
+  ultrabrain: ["gpt-6-astra", "gpt-5.6-sol"],
+  "deep-low": ["gpt-6.1-sol", "gpt-6.1-sol-fast", "gpt-5.6-sol", "gpt-5.6-sol-fast"],
+  "deep-high": ["gpt-6-astra"],
+  artistry: ["claude-fable-5-1", "claude-opus-5-5", "kimi-k3"],
+  quick: [
+    "gpt-6-luna-fast", "claude-haiku-5-5", "deepseek-flash", "qwen3.6-flash", "minimax-m3", "minimax-m2.7",
+    "grok-4.20-0309-non-reasoning", "glm-5.3-flash", "mimo-v2.6-flash",
+  ],
+  "unspecified-low": [
+    "claude-sonnet-5-5", "mimo-v2.6-pro", "grok-4.7", "gpt-6.1-sol", "gpt-5.6-sol", "claude-sonnet-5",
+    "qwen3.8-max-preview", "deepseek-v4-pro", "mimo-v2.5-pro",
+  ],
+  "unspecified-high": ["claude-opus-5-5", "glm-5.3", "kimi-k3"],
+  writing: ["claude-opus-5-5", "claude-opus-4-6"],
 };
 
 interface ChainResolution {
@@ -113,17 +125,6 @@ export const AGENT_ROLE_LABELS: Record<string, string> = {
   "multimodal-looker": "Vision",
   momus: "Reviewer",
   "sisyphus-junior": "Lightweight executor",
-};
-
-export const CATEGORY_ROLE_LABELS: Record<string, string> = {
-  "visual-engineering": "UI work",
-  ultrabrain: "Hard logic",
-  deep: "Deep problem solving",
-  artistry: "Creative work",
-  quick: "Trivial tasks",
-  "unspecified-low": "Low effort general",
-  "unspecified-high": "High effort general",
-  writing: "Documentation",
 };
 
 export type TierLevel = 1 | 2 | 3 | 4;
@@ -209,7 +210,8 @@ export const AGENT_ROLES: Record<string, { tier: TierLevel; label: string }> = {
 export const CATEGORY_ROLES: Record<string, { tier: TierLevel; label: string }> = {
   "visual-engineering": { tier: 4, label: "UI work" },
   ultrabrain: { tier: 1, label: "Hard logic" },
-  deep: { tier: 1, label: "Deep problem solving" },
+  "deep-low": { tier: 1, label: "Deep problem solving" },
+  "deep-high": { tier: 1, label: "Deep problem solving (escalation)" },
   artistry: { tier: 4, label: "Creative work" },
   quick: { tier: 3, label: "Trivial tasks" },
   "unspecified-low": { tier: 2, label: "Low effort general" },
@@ -217,16 +219,61 @@ export const CATEGORY_ROLES: Record<string, { tier: TierLevel; label: string }> 
   writing: { tier: 3, label: "Documentation" },
 };
 
+type ModelRef = string | { model: string; reasoning?: string; temperature?: number };
+
 interface ModelAssignment {
-  model: string;
-  variant?: string;
+  model?: string;
+  models?: ModelRef[];
+  reasoning?: string;
   temperature?: number;
   prompt_append?: string;
   description?: string;
-  fallback_models?: string[];
   permission?: { edit?: string; bash?: unknown };
-  thinking?: { type: string; budgetTokens?: number };
-  ultrawork?: { model?: string; variant?: string; temperature?: number };
+  providerOptions?: Record<string, unknown>;
+  ultrawork?: { model?: string; reasoning?: string };
+}
+
+const withProvider = (model: string) => `cliproxyapi/${model}`;
+
+/** Primary model and ordered fallbacks (unprefixed) for one chain and its stored override. */
+function resolveAssignment(
+  chain: string[],
+  availableModels: string[],
+  override: { model?: string; fallback_models?: string[] } | undefined,
+): ChainResolution {
+  let resolved: ChainResolution;
+  if (override?.model && availableModels.includes(override.model)) {
+    const overrideIndex = chain.indexOf(override.model);
+    resolved = {
+      model: override.model,
+      fallbackModels: overrideIndex >= 0
+        ? chain.slice(overrideIndex + 1).filter((m) => availableModels.includes(m))
+        : [],
+    };
+  } else {
+    const resolution = resolveChain(chain, availableModels);
+    // No chain model available — still emit the first chain model as the intended model
+    resolved = resolution ?? { model: chain[0]!, fallbackModels: [] };
+  }
+  if (override?.fallback_models?.length) {
+    resolved = { ...resolved, fallbackModels: override.fallback_models.filter((m) => availableModels.includes(m)) };
+  }
+  return resolved;
+}
+
+/**
+ * OMO 5.x model fields: a single `model`, or `models: [primary, ...fallbacks]` (upstream's replacement for
+ * `fallback_models`). With `models`, upstream takes per-model settings from the primary rung and drops the
+ * entry-level ones, so `primarySettings` move onto that rung.
+ */
+function modelFields(
+  { model, fallbackModels }: ChainResolution,
+  primarySettings: { reasoning?: string; temperature?: number },
+): Pick<ModelAssignment, "model" | "models" | "reasoning" | "temperature"> {
+  const settings = Object.fromEntries(Object.entries(primarySettings).filter(([, v]) => v !== undefined));
+  if (fallbackModels.length === 0) return { model: withProvider(model), ...settings };
+  const primary = Object.keys(settings).length > 0 ? { model: withProvider(model), ...settings } : withProvider(model);
+  return { models: [primary, ...fallbackModels.map(withProvider)] };
 }
 
 export function buildOhMyOpenCodeConfig(
@@ -237,53 +284,19 @@ export function buildOhMyOpenCodeConfig(
 
   for (const [agent, chain] of Object.entries(UPSTREAM_AGENT_CHAINS)) {
     const agentOverride = overrides?.agents?.[agent];
-    const overrideModel = agentOverride?.model;
-    let entry: ModelAssignment;
+    const entry: ModelAssignment = modelFields(resolveAssignment(chain, availableModels, agentOverride), {
+      reasoning: agentOverride?.reasoning,
+      temperature: agentOverride?.temperature,
+    });
 
-    if (overrideModel && availableModels.includes(overrideModel)) {
-      const overrideIndex = chain.indexOf(overrideModel);
-      const fallbackModels = overrideIndex >= 0
-        ? chain.slice(overrideIndex + 1).filter((m) => availableModels.includes(m))
-        : [];
-      entry = {
-        model: `cliproxyapi/${overrideModel}`,
-        fallback_models: fallbackModels.length > 0
-          ? fallbackModels.map((m) => `cliproxyapi/${m}`)
-          : undefined,
-      };
-      if (!entry.fallback_models) delete entry.fallback_models;
-    } else {
-      const resolution = resolveChain(chain, availableModels);
-      if (!resolution) {
-        // No chain model available — still include agent with the first chain model as intended model
-        entry = { model: `cliproxyapi/${chain[0]}` };
-      } else {
-        entry = {
-          model: `cliproxyapi/${resolution.model}`,
-          fallback_models: resolution.fallbackModels.length > 0
-            ? resolution.fallbackModels.map((m) => `cliproxyapi/${m}`)
-            : undefined,
-        };
-        if (!entry.fallback_models) delete entry.fallback_models;
-      }
-    }
-
-    if (agentOverride?.variant) entry.variant = agentOverride.variant;
-    if (agentOverride?.temperature !== undefined) entry.temperature = agentOverride.temperature;
     if (agentOverride?.prompt_append) entry.prompt_append = agentOverride.prompt_append;
-    if (agentOverride?.fallback_models?.length) {
-      entry.fallback_models = agentOverride.fallback_models
-        .filter((m) => availableModels.includes(m))
-        .map((m) => `cliproxyapi/${m}`);
-      if (entry.fallback_models.length === 0) delete entry.fallback_models;
-    }
     if (agentOverride?.permission) entry.permission = agentOverride.permission;
-    if (agentOverride?.thinking) entry.thinking = agentOverride.thinking;
+    if (agentOverride?.providerOptions) entry.providerOptions = agentOverride.providerOptions;
     if (agentOverride?.ultrawork) {
       const ultrawork = { ...agentOverride.ultrawork };
       if (ultrawork.model) {
         if (availableModels.includes(ultrawork.model)) {
-          ultrawork.model = `cliproxyapi/${ultrawork.model}`;
+          ultrawork.model = withProvider(ultrawork.model);
         } else {
           delete ultrawork.model;
         }
@@ -294,49 +307,17 @@ export function buildOhMyOpenCodeConfig(
   }
 
   const categories: Record<string, ModelAssignment> = {};
+  const categoryOverrides = canonicalizeCategories(overrides?.categories);
 
   for (const [category, chain] of Object.entries(UPSTREAM_CATEGORY_CHAINS)) {
-    const categoryOverride = overrides?.categories?.[category];
-    const overrideModel = categoryOverride?.model;
-    let entry: ModelAssignment;
+    const categoryOverride = categoryOverrides?.[category];
+    // Upstream applies a category's temperature from the entry, so only reasoning rides on the primary rung.
+    const entry: ModelAssignment = modelFields(resolveAssignment(chain, availableModels, categoryOverride), {
+      reasoning: categoryOverride?.reasoning,
+    });
 
-    if (overrideModel && availableModels.includes(overrideModel)) {
-      const overrideIndex = chain.indexOf(overrideModel);
-      const fallbackModels = overrideIndex >= 0
-        ? chain.slice(overrideIndex + 1).filter((m) => availableModels.includes(m))
-        : [];
-      entry = {
-        model: `cliproxyapi/${overrideModel}`,
-        fallback_models: fallbackModels.length > 0
-          ? fallbackModels.map((m) => `cliproxyapi/${m}`)
-          : undefined,
-      };
-      if (!entry.fallback_models) delete entry.fallback_models;
-    } else {
-      const resolution = resolveChain(chain, availableModels);
-      if (!resolution) {
-        // No chain model available — still include category with the first chain model as intended model
-        entry = { model: `cliproxyapi/${chain[0]}` };
-      } else {
-        entry = {
-          model: `cliproxyapi/${resolution.model}`,
-          fallback_models: resolution.fallbackModels.length > 0
-            ? resolution.fallbackModels.map((m) => `cliproxyapi/${m}`)
-            : undefined,
-        };
-        if (!entry.fallback_models) delete entry.fallback_models;
-      }
-    }
-
-    if (categoryOverride?.variant) entry.variant = categoryOverride.variant;
     if (categoryOverride?.temperature !== undefined) entry.temperature = categoryOverride.temperature;
     if (categoryOverride?.description) entry.description = categoryOverride.description;
-    if (categoryOverride?.fallback_models?.length) {
-      entry.fallback_models = categoryOverride.fallback_models
-        .filter((m) => availableModels.includes(m))
-        .map((m) => `cliproxyapi/${m}`);
-      if (entry.fallback_models.length === 0) delete entry.fallback_models;
-    }
     categories[category] = entry;
   }
 
@@ -345,8 +326,7 @@ export function buildOhMyOpenCodeConfig(
   }
 
   const config: Record<string, unknown> = {
-    $schema:
-      "https://raw.githubusercontent.com/code-yeongyu/oh-my-openagent/main/assets/oh-my-opencode.schema.json",
+    $schema: OMO_SCHEMA_URL,
   };
 
   if (Object.keys(agents).length > 0) {
@@ -383,10 +363,6 @@ export function buildOhMyOpenCodeConfig(
 
   config.git_master = { commit_footer: false, include_co_authored_by: false, ...overrides?.git_master };
 
-  if (overrides?.lsp && Object.keys(overrides.lsp).length > 0) {
-    config.lsp = overrides.lsp;
-  }
-
   if (overrides?.hashline_edit !== undefined) config.hashline_edit = overrides.hashline_edit;
 
   if (overrides?.experimental && Object.keys(overrides.experimental).length > 0) {
@@ -410,8 +386,8 @@ export function applyPreset(
       ...presetConfig.agents,
     },
     categories: {
-      ...existingOverrides?.categories,
-      ...presetConfig.categories,
+      ...canonicalizeCategories(existingOverrides?.categories),
+      ...canonicalizeCategories(presetConfig.categories),
     },
     background_task: (() => {
       const base = {

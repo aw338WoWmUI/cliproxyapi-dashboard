@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { NextRequest } from "next/server";
 import type { QuotaGroup } from "@/lib/model-first-monitoring";
+import { isShortTermQuotaWindow } from "@/lib/quota-window-classification";
 
 vi.mock("@/lib/auth/session", () => ({
   verifySession: vi.fn(() => ({ userId: "test-user" })),
@@ -372,6 +373,24 @@ describe("GET /api/quota - imported provider normalization", () => {
     expect(account.provider).toBe("copilot");
     expect(account.supported).toBe(true);
     expect(account.groups).toBeDefined();
+  });
+
+  it("uses normalized plugin quota when a Copilot token is private to the provider", async () => {
+    fetchMock
+      .mockResolvedValueOnce({ ok: true, json: async () => ({ files: [{
+        auth_index: "plugin-account", provider: "copilot", disabled: false, status: "active",
+      }] }), body: { cancel: vi.fn() } })
+      .mockResolvedValueOnce({ ok: false, status: 400, body: { cancel: vi.fn() } })
+      .mockResolvedValueOnce({ ok: true, json: async () => ({ groups: [{
+        displayName: "Premium requests", buckets: [{ remainingFraction: 0.42, resetTime: "2026-11-01T00:00:00Z" }],
+      }] }) });
+    const { GET } = await import("./route");
+    const response = await GET(new Request("http://localhost/api/quota", { headers: { cookie: "session=test" } }) as NextRequest);
+    const data = await response.json();
+    expect(data.accounts[0].error).toBeUndefined();
+    expect(data.accounts[0].groups[0].remainingFraction).toBe(0.42);
+    expect(fetchMock.mock.calls[2]?.[0]).toContain("/quota/fetch");
+    expect(JSON.parse(fetchMock.mock.calls[2]?.[1]?.body)).toEqual({ auth_index: "plugin-account", provider: "copilot" });
   });
 
   it("CLAUDE uppercase provider returns supported: true", async () => {
@@ -821,5 +840,21 @@ describe("GET /api/quota - Claude limits[] parsing (issue #230)", () => {
     expect(groups.find((group) => group.id === "five-hour")?.remainingFraction).toBeCloseTo(0.9, 5);
     expect(groups.find((group) => group.id === "seven-day")?.remainingFraction).toBeCloseTo(0.5, 5);
     expect(groups.find((group) => group.id === "seven-day")?.severity).toBeUndefined();
+  });
+});
+
+
+describe("Codex window classification regression", () => {
+  it("keeps a primary weekly window long-term after the real quota parser", async () => {
+    vi.clearAllMocks();
+    fetchMock
+      .mockResolvedValueOnce({ ok: true, json: async () => ({ files: [{ auth_index: 41, provider: "codex", name: "codex-synthetic.json", disabled: false, status: "active" }] }) })
+      .mockResolvedValueOnce({ ok: true, json: async () => ({ status_code: 200, body: { rate_limit: { primary_window: { limit_window_seconds: 604800, used_percent: 25, reset_at: 1792108800 } } } }) });
+    const { GET } = await import("./route");
+    const response = await GET(new NextRequest("http://localhost/api/quota"));
+    expect(response.status).toBe(200);
+    const data = await response.json();
+    expect(data.accounts[0].groups[0]).toMatchObject({ id: "primary-window", label: "168h Window", remainingFraction: 0.75 });
+    expect(isShortTermQuotaWindow(data.accounts[0].groups[0], data.accounts[0].groups)).toBe(false);
   });
 });

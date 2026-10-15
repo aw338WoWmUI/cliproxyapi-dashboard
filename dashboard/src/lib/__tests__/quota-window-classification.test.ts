@@ -3,12 +3,6 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { capacityQuotaGroups, isShortTermQuotaWindow } from "../quota-window-classification";
 
 describe("isShortTermQuotaWindow", () => {
-  it("classifies Codex by its reported duration even if its primary window is weekly", () => {
-    for (const resetTime of [null, new Date(Date.now() + 1000).toISOString()]) {
-      expect(isShortTermQuotaWindow({ id: "primary-window", label: "168h Window", resetTime })).toBe(false);
-      expect(isShortTermQuotaWindow({ id: "secondary-window", label: "5h Window", resetTime })).toBe(true);
-    }
-  });
   it("keeps explicit short-term markers classified as short-term", () => {
     expect(
       isShortTermQuotaWindow({
@@ -87,6 +81,22 @@ describe("isShortTermQuotaWindow", () => {
       expect(isShortTermQuotaWindow({ id, label, resetTime: "2026-10-01T15:59:59Z" })).toBe(false);
     });
   });
+
+  it.each(["primary-window", "secondary-window"])(
+    "keeps the Codex 168h %s long-term near reset",
+    (id) => {
+      vi.useFakeTimers();
+      vi.setSystemTime(new Date("2026-10-16T00:00:00Z"));
+      try {
+        const groups = [
+          { id, label: "168h Window", resetTime: "2026-10-16T01:00:00Z" },
+        ] as const;
+        expect(isShortTermQuotaWindow(groups[0], groups)).toBe(false);
+      } finally {
+        vi.useRealTimers();
+      }
+    }
+  );
 
   it("treats windows without markers or reset time as long-term", () => {
     expect(

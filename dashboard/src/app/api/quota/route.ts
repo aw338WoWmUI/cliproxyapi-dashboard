@@ -834,8 +834,7 @@ async function fetchCopilotQuota(
   authIndex: string
 ): Promise<QuotaGroup[] | { error: string }> {
   try {
-    const v8ManagementUrl = CLIPROXYAPI_MANAGEMENT_URL.replace(/\/v[08]\/management\/?$/, "/v8/management");
-    const response = await fetch(`${v8ManagementUrl}/requests/api-call`, {
+    const response = await fetch(`${CLIPROXYAPI_MANAGEMENT_URL}/api-call`, {
       method: "POST",
       headers: {
         Authorization: `Bearer ${MANAGEMENT_API_KEY}`,
@@ -857,6 +856,35 @@ async function fetchCopilotQuota(
 
     if (!response.ok) {
       await response.body?.cancel();
+      // Plugin-owned credentials may expose quota without exporting a legacy $TOKEN$.
+      const native = await fetch(`${CLIPROXYAPI_MANAGEMENT_URL}/quota/fetch`, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${MANAGEMENT_API_KEY}`,
+          "Content-Type": "application/json",
+        },
+        signal: AbortSignal.timeout(30_000),
+        body: JSON.stringify({ auth_index: authIndex, provider: "copilot" }),
+      });
+      if (native.ok) {
+        const quota = (await native.json()) as {
+          groups?: Array<{ displayName?: string; buckets?: Array<{
+            remainingFraction: number; resetTime?: string;
+          }> }>;
+        };
+        const groups: QuotaGroup[] = (quota.groups ?? []).flatMap((group, index) =>
+          (group.buckets ?? []).map((bucket, bucketIndex) => ({
+            id: `copilot-${index}-${bucketIndex}`,
+            label: group.displayName ?? "Copilot",
+            remainingFraction: normalizeFraction(bucket.remainingFraction),
+            resetTime: bucket.resetTime ?? null,
+            models: [],
+          }))
+        );
+        if (groups.length > 0) return groups;
+      } else {
+        await native.body?.cancel();
+      }
       return { error: `Management API call failed: ${response.status}` };
     }
 

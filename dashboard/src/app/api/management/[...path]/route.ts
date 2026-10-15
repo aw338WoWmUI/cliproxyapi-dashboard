@@ -6,9 +6,9 @@ import { prisma } from "@/lib/db";
 import { env } from "@/lib/env";
 import { logger } from "@/lib/logger";
 import { fetchWithRetry } from "@/lib/fetch-utils";
-import { parseConfigYaml } from "@/lib/config-yaml";
 import { getManagementUrl } from "@/lib/management-url";
 import { ERROR_CODE, apiError } from "@/lib/errors";
+import { PLUGIN_SUPPORT_HEADER } from "@/lib/plugin-store";
 
 const BACKEND_API_URL = getManagementUrl();
 const MANAGEMENT_API_KEY = env.MANAGEMENT_API_KEY;
@@ -301,13 +301,6 @@ async function proxyRequest(
           );
         }
         body = rawBody;
-        if (normalizedPath === "config.yaml") {
-          try {
-            parseConfigYaml(rawBody);
-          } catch (error) {
-            return NextResponse.json({ error: error instanceof Error ? error.message : "Invalid config.yaml" }, { status: 400 });
-          }
-        }
       }
     }
 
@@ -368,11 +361,17 @@ async function proxyRequest(
       "Proxy request completed"
     );
 
+    const responseHeaders: Record<string, string> = {
+      "Content-Type": responseContentType || "application/json",
+    };
+    const pluginSupport = response.headers.get(PLUGIN_SUPPORT_HEADER);
+    if (pluginSupport !== null) {
+      responseHeaders[PLUGIN_SUPPORT_HEADER] = pluginSupport;
+    }
+
     return new NextResponse(responseData, {
       status: response.status,
-      headers: {
-        "Content-Type": responseContentType || "application/json",
-      },
+      headers: responseHeaders,
     });
   } catch (error) {
     logger.error({ err: error, method, path: rawPath, userId: session.userId, durationMs: Date.now() - startedAt }, "Proxy request error");

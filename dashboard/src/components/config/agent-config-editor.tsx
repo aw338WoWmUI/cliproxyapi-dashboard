@@ -21,7 +21,7 @@ interface AgentConfigEditorProps {
   updateConfig: <K extends keyof Config>(key: K, value: Config[K]) => void;
   updateStreamingConfig: (key: keyof StreamingConfig, value: number) => void;
   updateQuotaConfig: (key: keyof QuotaExceededConfig, value: boolean) => void;
-  updateRoutingConfig: (key: keyof RoutingConfig, value: string | boolean) => void;
+  updateRoutingConfig: (key: keyof RoutingConfig, value: string) => void;
   updateTlsConfig: (key: keyof TlsConfig, value: string | boolean) => void;
   updatePprofConfig: (key: keyof PprofConfig, value: string | boolean) => void;
   updateClaudeHeaderDefaults: (key: keyof ClaudeHeaderDefaults, value: string) => void;
@@ -114,12 +114,6 @@ export default function AgentConfigEditor({
               onChange={(value) => updateRoutingConfig("strategy", value)}
               options={ROUTING_STRATEGIES.map((strategy) => ({ value: strategy.value, label: t(strategy.labelKey) }))}
             />
-          </ConfigField>
-          <ConfigField label={t("fieldSessionAffinityLabel")} description={t("fieldSessionAffinityDesc")}>
-            <Toggle enabled={config.routing["session-affinity"] ?? false} onChange={(value) => updateRoutingConfig("session-affinity", value)} />
-          </ConfigField>
-          <ConfigField label={t("fieldSessionAffinityTtlLabel")} description={t("fieldSessionAffinityTtlDesc")}>
-            <Input name="session-affinity-ttl" value={config.routing["session-affinity-ttl"] ?? "1h"} onChange={(value) => updateRoutingConfig("session-affinity-ttl", value)} />
           </ConfigField>
           <ConfigField label={t("fieldSwitchProjectLabel")} description={t("fieldSwitchProjectDesc")}>
             <Toggle enabled={config["quota-exceeded"]["switch-project"]} onChange={(value) => updateQuotaConfig("switch-project", value)} />

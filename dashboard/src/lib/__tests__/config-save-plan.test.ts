@@ -13,22 +13,6 @@ const original = {
 };
 
 describe("planConfigSave", () => {
-  it.each([
-    { "session-affinity": true },
-    { "session-affinity-ttl": "24h" },
-  ])("persists affinity settings through YAML: %j", (routingChange) => {
-    expect(planConfigSave(original, { ...original, routing: { ...original.routing, ...routingChange } })).toEqual([
-      { kind: "yaml", changes: { routing: routingChange } },
-    ]);
-  });
-
-  it("saves strategy and affinity together in one write", () => {
-    const routing = { strategy: "fill-first", "session-affinity": true, "session-affinity-ttl": "24h" };
-    expect(planConfigSave(original, { ...original, routing })).toEqual([
-      { kind: "yaml", changes: { routing } },
-    ]);
-  });
-
   it("plans nothing when nothing changed", () => {
     expect(planConfigSave(original, structuredClone(original))).toEqual([]);
   });
