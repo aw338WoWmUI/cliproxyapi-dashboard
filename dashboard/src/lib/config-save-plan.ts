@@ -73,14 +73,6 @@ export function planConfigSave(originalConfig: object, currentConfig: object): C
   }
 
   let mergeOnlyChanged = false;
-  const oldRouting = isRecord(original.routing) ? original.routing : {};
-  const newRouting = isRecord(current.routing) ? current.routing : {};
-  for (const key of ["session-affinity", "session-affinity-ttl"]) {
-    if (!isChanged(oldRouting[key], newRouting[key])) continue;
-    const routingChanges = isRecord(changes.routing) ? changes.routing : {};
-    changes.routing = { ...routingChanges, [key]: newRouting[key] };
-    mergeOnlyChanged = true;
-  }
   for (const key of MERGE_ONLY_FIELDS) {
     if (!isChanged(original[key], current[key])) continue;
     changes[key] = current[key];

@@ -32,35 +32,42 @@ export const ContainerActionSchema = z.object({
 // AGENT CONFIG
 // ============================================================================
 
+// Legacy "prompt" is still accepted and stored as "ask" by validateFullConfig.
+const PermissionValueSchema = z.enum(["ask", "allow", "deny", "prompt"]);
+
+// Legacy `variant`/`thinking` are still accepted; validateFullConfig translates them to `reasoning`/`providerOptions`.
 const AgentConfigEntrySchema = z.object({
   model: z.string().optional(),
+  reasoning: z.string().optional(),
   variant: z.string().optional(),
   temperature: z.number().min(0).max(2).optional(),
   prompt_append: z.string().optional(),
   fallback_models: z.array(z.string()).optional(),
   permission: z.object({
-    edit: z.enum(["allow", "deny", "prompt"]).optional(),
+    edit: PermissionValueSchema.optional(),
     bash: z.union([
-      z.enum(["allow", "deny", "prompt"]),
+      PermissionValueSchema,
       z.object({
-        git: z.enum(["allow", "deny", "prompt"]).optional(),
-        test: z.enum(["allow", "deny", "prompt"]).optional(),
+        git: PermissionValueSchema.optional(),
+        test: PermissionValueSchema.optional(),
       }),
     ]).optional(),
   }).optional(),
+  providerOptions: z.record(z.string(), z.unknown()).optional(),
   thinking: z.object({
     type: z.enum(["enabled", "disabled"]),
     budgetTokens: z.number().min(0).optional(),
   }).optional(),
   ultrawork: z.object({
     model: z.string().optional(),
+    reasoning: z.string().optional(),
     variant: z.string().optional(),
-    temperature: z.number().min(0).max(2).optional(),
   }).optional(),
 });
 
 const CategoryConfigEntrySchema = z.object({
   model: z.string().optional(),
+  reasoning: z.string().optional(),
   variant: z.string().optional(),
   temperature: z.number().min(0).max(2).optional(),
   description: z.string().optional(),
@@ -103,11 +110,6 @@ const ExperimentalConfigSchema = z.object({
   task_system: z.boolean().optional(),
 });
 
-const LspEntrySchema = z.object({
-  command: z.array(z.string()).min(1),
-  extensions: z.array(z.string()).optional(),
-});
-
 const LocalMcpEntrySchema = z.object({
   name: z.string().min(1),
   type: z.literal("local"),
@@ -139,7 +141,6 @@ export const AgentConfigOverridesSchema = z.object({
   browser_automation_engine: BrowserAutomationConfigSchema.optional(),
   sisyphus_agent: SisyphusAgentConfigSchema.optional(),
   git_master: GitMasterConfigSchema.optional(),
-  lsp: z.record(z.string(), LspEntrySchema).optional(),
   mcpServers: z.array(McpEntrySchema).optional(),
   customPlugins: z.array(z.string()).optional(),
   configSchemaVersion: z.number().positive().optional(),
@@ -172,31 +173,24 @@ const SlimAgentEntrySchema = z.object({
   skills: z.array(z.string()).optional(),
   mcps: z.array(z.string()).optional(),
   options: z.record(z.string(), z.unknown()).optional(),
-});
-
-const SlimManualPlanEntrySchema = z.object({
-  primary: z.string(),
-  fallback1: z.string(),
-  fallback2: z.string(),
-  fallback3: z.string(),
+  inheritModelFrom: z.enum(["session", "orchestrator"]).optional(),
+  skills_add: z.array(z.string()).optional(),
+  skills_remove: z.array(z.string()).optional(),
+  skills_include_local: z.boolean().optional(),
+  prompt: z.string().optional(),
+  orchestratorPrompt: z.string().optional(),
+  displayName: z.string().optional(),
+  color: z.string().optional(),
+  description: z.string().optional(),
+  // Shape is checked by validateSlimConfig.
+  permission: z.union([z.string(), z.record(z.string(), z.unknown())]).optional(),
 });
 
 const SlimFallbackSchema = z.object({
   enabled: z.boolean().optional(),
-  timeoutMs: z.number().min(0).optional(),
   retryDelayMs: z.number().min(0).optional(),
-  retry_on_empty: z.boolean().optional(),
+  maxRetries: z.number().int().min(0).optional(),
   chains: z.record(z.string(), z.array(z.string()).min(1)).optional(),
-});
-
-const SlimTmuxSchema = z.object({
-  enabled: z.boolean().optional(),
-  layout: z.enum(["main-horizontal", "main-vertical", "tiled", "even-horizontal", "even-vertical"]).optional(),
-  main_pane_size: z.number().min(20).max(80).optional(),
-});
-
-const SlimBackgroundSchema = z.object({
-  maxConcurrentStarts: z.number().min(1).max(50).optional(),
 });
 
 const SlimCouncillorEntrySchema = z.object({
@@ -205,32 +199,21 @@ const SlimCouncillorEntrySchema = z.object({
   prompt: z.string().optional(),
 });
 
-const SlimCouncilPresetMasterOverrideSchema = z.object({
-  model: z.string().optional(),
-  variant: z.string().optional(),
-  prompt: z.string().optional(),
-}).refine(
-  (value) => value.model !== undefined || value.variant !== undefined || value.prompt !== undefined,
-  "Council master override must include at least one of model, variant, or prompt",
-);
-
 const SlimCouncilPresetSchema = z.object({
   councillors: z.record(z.string(), SlimCouncillorEntrySchema),
-  master: SlimCouncilPresetMasterOverrideSchema.optional(),
 });
 
 const SlimCouncilSchema = z.object({
-  master: SlimCouncilPresetMasterOverrideSchema.optional(),
   presets: z.record(z.string(), SlimCouncilPresetSchema).optional(),
-  master_timeout: z.number().min(0).optional(),
-  councillors_timeout: z.number().min(0).optional(),
   default_preset: z.string().optional(),
-  master_fallback: z.array(z.string()).optional(),
-  councillor_execution_mode: z.enum(["parallel", "serial"]).optional(),
-  councillor_retries: z.number().int().min(0).max(5).optional(),
 });
 
-const SlimPresetSchema = z.record(z.string(), SlimAgentEntrySchema);
+// Upstream's `{ extends, agents: {...} }` wrapper form, or flat agents with an optional `extends`.
+const SlimPresetSchema = z.union([
+  z.object({ extends: z.string().optional(), agents: z.record(z.string(), SlimAgentEntrySchema) }),
+  // A wrapper whose agents fail validation must not fall through here and lose every agent.
+  z.record(z.string(), z.union([z.string(), SlimAgentEntrySchema])).refine((preset) => !("agents" in preset)),
+]);
 
 const SlimMultiplexerSchema = z.object({
   type: z.enum(["auto", "tmux", "zellij", "none"]).optional(),
@@ -246,35 +229,34 @@ const SlimInterviewSchema = z.object({
   dashboard: z.boolean().optional(),
 });
 
-const SlimTodoContinuationSchema = z.object({
-  maxContinuations: z.number().min(1).max(50).optional(),
-  cooldownMs: z.number().min(0).max(30000).optional(),
-  autoEnable: z.boolean().optional(),
-  autoEnableThreshold: z.number().min(1).max(50).optional(),
-});
-
-const SlimWebsearchSchema = z.object({
-  provider: z.enum(["exa", "tavily"]).optional(),
-});
-
+// Keys slim 3.x removed (manualPlan, tmux, council.master, ...) are not listed; z.object strips them,
+// so legacy payloads are still accepted.
 const SlimConfigOverridesSchema = z.object({
   preset: z.string().optional(),
   presets: z.record(z.string(), SlimPresetSchema).optional(),
   setDefaultAgent: z.boolean().optional(),
-  scoringEngineVersion: z.enum(["v1", "v2-shadow", "v2"]).optional(),
-  balanceProviderUsage: z.boolean().optional(),
-  manualPlan: z.record(z.string(), SlimManualPlanEntrySchema).optional(),
   agents: z.record(z.string(), SlimAgentEntrySchema).optional(),
   disabled_agents: z.array(z.string()).optional(),
   disabled_mcps: z.array(z.string()).optional(),
-  tmux: SlimTmuxSchema.optional(),
   multiplexer: SlimMultiplexerSchema.optional(),
-  background: SlimBackgroundSchema.optional(),
   fallback: SlimFallbackSchema.optional(),
   council: SlimCouncilSchema.optional(),
   interview: SlimInterviewSchema.optional(),
-  todoContinuation: SlimTodoContinuationSchema.optional(),
-  websearch: SlimWebsearchSchema.optional(),
+  compactSidebar: z.boolean().optional(),
+  stripOrchestratorModel: z.boolean().optional(),
+  routingBlock: z.boolean().optional(),
+  autoUpdate: z.boolean().optional(),
+  image_routing: z.enum(["auto", "direct"]).optional(),
+  deepworkGuardMode: z.enum(["shadow", "enforce"]).optional(),
+  disabled_tools: z.array(z.string()).optional(),
+  disabled_skills: z.array(z.string()).optional(),
+  // Unknown hook/command names are dropped by validateSlimConfig, as upstream does.
+  disabled_hooks: z.array(z.string()).optional(),
+  disabled_commands: z.array(z.string()).optional(),
+  backgroundJobs: z.record(z.string(), z.unknown()).optional(),
+  companion: z.record(z.string(), z.unknown()).optional(),
+  webfetch: z.record(z.string(), z.unknown()).optional(),
+  acpAgents: z.record(z.string(), z.unknown()).optional(),
 });
 
 export const SlimAgentConfigSchema = z.object({

@@ -134,6 +134,22 @@ describe("management proxy allowlist", () => {
     expect(mocks.fetchWithRetry).not.toHaveBeenCalled();
   });
 
+  it("passes the plugin-support header through to the client", async () => {
+    mocks.fetchWithRetry.mockResolvedValue(
+      new Response("{}", { status: 200, headers: { "X-CPA-SUPPORT-PLUGIN": "0" } })
+    );
+
+    const response = await callRoute("GET", ["plugin-store"]);
+
+    expect(response.headers.get("X-CPA-SUPPORT-PLUGIN")).toBe("0");
+  });
+
+  it("adds no plugin-support header when upstream sends none", async () => {
+    const response = await callRoute("GET", ["plugin-store"]);
+
+    expect(response.headers.has("X-CPA-SUPPORT-PLUGIN")).toBe(false);
+  });
+
   it("refuses PUT on plugin settings, which would disable the plugin and drop its store record", async () => {
     const response = await callRoute("PUT", ["plugins", "zcode", "config"]);
 
@@ -141,14 +157,6 @@ describe("management proxy allowlist", () => {
     expect(await response.json()).toEqual({
       error: { code: "VALIDATION_ERROR", message: "Use PATCH to change plugin settings" },
     });
-    expect(mocks.fetchWithRetry).not.toHaveBeenCalled();
-  });
-  it.each(["24hours", "0s"])("rejects invalid affinity TTL %s before forwarding config.yaml", async (ttl) => {
-    const request = new NextRequest("http://localhost/api/management/config.yaml", {
-      method: "PUT", body: `routing:\n  session-affinity-ttl: ${ttl}\n`,
-    });
-    const response = await PUT(request, { params: Promise.resolve({ path: ["config.yaml"] }) });
-    expect(response.status).toBe(400);
     expect(mocks.fetchWithRetry).not.toHaveBeenCalled();
   });
 });

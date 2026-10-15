@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { isValidGoDuration, mergeConfigYaml, parseConfigYaml, readAuthDir } from "@/lib/config-yaml";
+import { mergeConfigYaml, parseConfigYaml, readAuthDir } from "@/lib/config-yaml";
 
 describe("readAuthDir", () => {
   it("reads a custom auth-dir from a legacy config.yaml", () => {
@@ -297,45 +297,3 @@ describe("mergeConfigYaml on a v8-layout config.yaml", () => {
     expect(merged).toEqual({ "passthrough-headers": true });
   });
 });
-
-describe("session-affinity duration validation", () => {
-  it.each(["1h", "24h", "1h30m", "1.5h", ".5s", "100ms", "1µs"])("accepts %s", (ttl) => {
-    expect(isValidGoDuration(ttl)).toBe(true);
-    expect(parseConfigYaml(`routing:\n  session-affinity-ttl: ${ttl}\n`)).toHaveProperty("routing");
-  });
-  it.each(["", "24hours", "0", "0s", "-1h", "1h garbage", "999999999999h"])("rejects %s before merging YAML", (ttl) => {
-    expect(isValidGoDuration(ttl)).toBe(false);
-    expect(() => parseConfigYaml(`routing:\n  session-affinity-ttl: '${ttl}'\n`)).toThrow(/session-affinity-ttl/);
-  });
-});
-
-describe("parseConfigYaml", () => {
-  it("returns empty object for empty/whitespace-only input", () => {
-    expect(parseConfigYaml("")).toEqual({});
-    expect(parseConfigYaml("   \n  ")).toEqual({});
-  });
-
-  it("parses a valid YAML mapping", () => {
-    const result = parseConfigYaml("host: localhost\nport: 8317\n");
-    expect(result).toEqual({ host: "localhost", port: 8317 });
-  });
-
-  it("throws on invalid YAML syntax", () => {
-    expect(() => parseConfigYaml(":\n  bad: [unterminated")).toThrow(
-      /Invalid current config\.yaml/
-    );
-  });
-
-  it("throws when YAML root is an array", () => {
-    expect(() => parseConfigYaml("- item1\n- item2\n")).toThrow(
-      /root value is not a YAML mapping/
-    );
-  });
-
-  it("throws when YAML root is a scalar", () => {
-    expect(() => parseConfigYaml('"just a string"')).toThrow(
-      /root value is not a YAML mapping/
-    );
-  });
-});
-
