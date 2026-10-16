@@ -445,7 +445,7 @@ async function fetchAntigravityPayload<T>(
               return fallback ?? { error: "Google account requires verification - visit accounts.google.com" };
             }
             lastError = `Antigravity access denied${errorDetail ? `: ${errorDetail}` : ""}`;
-            return fallback ?? { error: lastError };
+            continue;
           }
           if (statusCode === 429) {
             lastError = `Antigravity rate limited${errorDetail ? `: ${errorDetail}` : " - quota exhausted"}`;

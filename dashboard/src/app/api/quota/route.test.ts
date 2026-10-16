@@ -398,6 +398,21 @@ describe("GET /api/quota - Antigravity client identity and Argon quota (issue #3
     expect(account.groups.map((group: QuotaGroup) => group.id)).toEqual(["gemini-weekly", "gemini-5h", "claude-gpt-weekly", "claude-gpt-5h"]);
   });
 
+  it("continues past an endpoint-specific 403 after a partial summary", async () => {
+    mockAntigravity("antigravity", (url) => ({ groups: url === "https://daily-cloudcode-pa.googleapis.com/v1internal:retrieveUserQuotaSummary" ? [claudeGroup] : [geminiGroup] }));
+    const respond = fetchMock.getMockImplementation()!;
+    fetchMock.mockImplementation(async (url: string, options?: { body?: string }) => {
+      const call = JSON.parse(options?.body ?? "{}");
+      if (call.url?.includes("sandbox") && call.url?.includes("retrieveUserQuotaSummary")) {
+        return { ok: true, json: async () => ({ status_code: 403, body: { error: { message: "host access denied" } } }) };
+      }
+      return respond(url, options);
+    });
+    const account = await fetchAccount();
+    expect(apiCalls().filter((call) => call.url.includes("retrieveUserQuotaSummary"))).toHaveLength(3);
+    expect(account.groups.map((group: QuotaGroup) => group.id)).toEqual(["gemini-weekly", "gemini-5h"]);
+  });
+
   it("falls back to the first valid response when no endpoint returns a shared Gemini window", async () => {
     mockAntigravity("antigravity", (url) => ({ groups: url.includes("sandbox") ? [] : [claudeGroup] }));
     const account = await fetchAccount();

@@ -98,7 +98,7 @@ function buildAgentEntry(
   const overrideModel = override?.model;
 
   // Upstream lets a scalar model beat inheritance, so an inheriting agent gets no auto-pick or default variant.
-  if (override?.inheritModelFrom !== undefined && overrideModel === undefined) {
+  if (override?.inheritModelFrom !== undefined && typeof overrideModel !== "string") {
     return copyAgentFields(override, availableModels);
   }
 

@@ -57,6 +57,13 @@ describe("buildSlimConfig – inheritModelFrom", () => {
     expect(fixer).toEqual({ inheritModelFrom: "session" });
   });
 
+  it.each(["session", "orchestrator"] as const)("does not add a role variant to %s inheritance with fallback models", (from) => {
+    const { fixer } = presetAgents(available, { presets: {
+      cliproxyapi: { agents: { fixer: { inheritModelFrom: from, model: ["model-a"] } } },
+    } });
+    expect(fixer).toEqual({ inheritModelFrom: from, model: ["cliproxyapi/model-a"] });
+  });
+
   it("keeps an explicit user model next to inheritModelFrom", () => {
     const { fixer } = presetAgents(available, {
       presets: { cliproxyapi: { agents: { fixer: { inheritModelFrom: "session", model: "model-a" } } } },
