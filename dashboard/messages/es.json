@@ -189,6 +189,8 @@
     "claudeCodeApiKeysLink": "Claves API",
     "claudeCodePageSuffix": ".",
     "modelSourceOAuthAlias": "Alias de OAuth",
+    "omoNoticeTitle": "Tu configuración de OMO no se ha aplicado desde OMO 4.19.3",
+    "omoNoticeBody": "Desde OMO 4.19.3 (finales de julio de 2026), no se aplicaba la configuración de agentes y modelos sincronizada desde este panel. El complemento de sincronización se actualiza mediante @latest y corrige el problema: tu configuración volverá a aplicarse la próxima vez que inicies OpenCode.",
     "quickStartTitle": "Inicio Rápido"
   },
   "settings": {
@@ -1644,6 +1646,18 @@
     "hooks": "Ganchos (Hooks)",
     "disabledCount": "{count} desactivados",
     "hookGroupStats": "({disabled}/{total} desactivados)",
+    "hookGroups": {
+      "context": "Contexto",
+      "recovery": "Recuperación",
+      "notification": "Notificaciones",
+      "validation": "Validación",
+      "guards": "Protecciones",
+      "output": "Salida",
+      "injection": "Inyección",
+      "automation": "Automatización",
+      "environment": "Entorno",
+      "planning": "Planificación"
+    },
     "sisyphusAgent": "Agente Sisyphus",
     "sisyphusDisabled": "Desactivado",
     "defaultBuilderEnabled": "Constructor por Defecto Activado",

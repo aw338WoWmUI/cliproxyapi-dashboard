@@ -189,6 +189,8 @@
     "claudeCodeApiKeysLink": "API 密钥",
     "claudeCodePageSuffix": "页面。",
     "modelSourceOAuthAlias": "OAuth 别名",
+    "omoNoticeTitle": "自 OMO 4.19.3 起，您的 OMO 设置未能生效",
+    "omoNoticeBody": "自 OMO 4.19.3（2026 年 7 月下旬）起，从此管理面板同步的代理和模型设置未能生效。同步插件会通过 @latest 自动更新并修复此问题：下次启动 OpenCode 后，您的设置将重新生效。",
     "quickStartTitle": "快速开始"
   },
   "settings": {
@@ -1649,6 +1651,18 @@
     "hooks": "钩子",
     "disabledCount": "已禁用 {count} 个",
     "hookGroupStats": "（已禁用 {disabled}/{total} 个）",
+    "hookGroups": {
+      "context": "上下文",
+      "recovery": "恢复",
+      "notification": "通知",
+      "validation": "校验",
+      "guards": "防护",
+      "output": "输出",
+      "injection": "注入",
+      "automation": "自动化",
+      "environment": "环境",
+      "planning": "规划"
+    },
     "sisyphusAgent": "Sisyphus 智能体",
     "sisyphusDisabled": "禁用",
     "defaultBuilderEnabled": "启用默认构建智能体",

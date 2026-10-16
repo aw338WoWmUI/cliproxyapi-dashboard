@@ -4,6 +4,7 @@ import {
   PASSWORD_MAX_LENGTH,
 } from "@/lib/auth/validation";
 import { DOCKER_TAG_PATTERN } from "@/lib/proxy-image-pin";
+import { isValidOmoSection } from "@/lib/config-generators/upstream/omo-sections";
 
 // ============================================================================
 // MODEL PREFERENCES
@@ -52,6 +53,10 @@ const AgentConfigEntrySchema = z.object({
         test: PermissionValueSchema.optional(),
       }),
     ]).optional(),
+    webfetch: PermissionValueSchema.optional(),
+    task: PermissionValueSchema.optional(),
+    doom_loop: PermissionValueSchema.optional(),
+    external_directory: PermissionValueSchema.optional(),
   }).optional(),
   providerOptions: z.record(z.string(), z.unknown()).optional(),
   thinking: z.object({
@@ -63,6 +68,7 @@ const AgentConfigEntrySchema = z.object({
     reasoning: z.string().optional(),
     variant: z.string().optional(),
   }).optional(),
+  displayName: z.string().optional(),
 });
 
 const CategoryConfigEntrySchema = z.object({
@@ -72,6 +78,9 @@ const CategoryConfigEntrySchema = z.object({
   temperature: z.number().min(0).max(2).optional(),
   description: z.string().optional(),
   fallback_models: z.array(z.string()).optional(),
+  max_tokens: z.number().int().positive().optional(),
+  provider_options: z.record(z.string(), z.unknown()).optional(),
+  warn_unavailable: z.boolean().optional(),
 });
 
 const TmuxConfigSchema = z.object({
@@ -80,6 +89,7 @@ const TmuxConfigSchema = z.object({
   main_pane_size: z.number().optional(),
   main_pane_min_width: z.number().optional(),
   agent_pane_min_width: z.number().optional(),
+  isolation: z.enum(["inline", "window", "session"]).optional(),
 });
 
 const BackgroundTaskConfigSchema = z.object({
@@ -87,10 +97,13 @@ const BackgroundTaskConfigSchema = z.object({
   staleTimeoutMs: z.number().optional(),
   providerConcurrency: z.record(z.string(), z.number()).optional(),
   modelConcurrency: z.record(z.string(), z.number()).optional(),
+  maxLiveDescendantsPerRoot: z.number().int().nonnegative().optional(),
+  taskCleanupDelayMs: z.number().min(60000).optional(),
 });
 
 const BrowserAutomationConfigSchema = z.object({
   provider: z.string().optional(),
+  playwright_mcp_args: z.array(z.string()).optional(),
 });
 
 const SisyphusAgentConfigSchema = z.object({
@@ -98,6 +111,7 @@ const SisyphusAgentConfigSchema = z.object({
   default_builder_enabled: z.boolean().optional(),
   planner_enabled: z.boolean().optional(),
   replace_plan: z.boolean().optional(),
+  tdd: z.boolean().optional(),
 });
 
 const GitMasterConfigSchema = z.object({
@@ -108,6 +122,7 @@ const GitMasterConfigSchema = z.object({
 const ExperimentalConfigSchema = z.object({
   aggressive_truncation: z.boolean().optional(),
   task_system: z.boolean().optional(),
+  disable_live_parent_wake_routing: z.boolean().optional(),
 });
 
 const LocalMcpEntrySchema = z.object({
@@ -128,6 +143,9 @@ const RemoteMcpEntrySchema = z.object({
 
 const McpEntrySchema = z.union([LocalMcpEntrySchema, RemoteMcpEntrySchema]);
 
+const omoSectionSchema = (key: string) => z.record(z.string(), z.unknown())
+  .refine((value) => isValidOmoSection(key, value), `Invalid OMO ${key} configuration`);
+
 export const AgentConfigOverridesSchema = z.object({
   agents: z.record(z.string(), z.union([z.string(), AgentConfigEntrySchema])).optional(),
   categories: z.record(z.string(), z.union([z.string(), CategoryConfigEntrySchema])).optional(),
@@ -147,6 +165,18 @@ export const AgentConfigOverridesSchema = z.object({
    hashline_edit: z.boolean().optional(),
    defaultModel: z.string().min(1).max(200).optional(),
    experimental: ExperimentalConfigSchema.optional(),
+  agent_order: z.array(z.string()).optional(),
+  agent_definitions: z.array(z.string()).optional(),
+  disabled_providers: z.array(z.string()).optional(),
+  telemetry: z.boolean().optional(),
+  goal: omoSectionSchema("goal").optional(),
+  i18n: omoSectionSchema("i18n").optional(),
+  monitor: omoSectionSchema("monitor").optional(),
+  team_mode: omoSectionSchema("team_mode").optional(),
+  keyword_detector: omoSectionSchema("keyword_detector").optional(),
+  tui: omoSectionSchema("tui").optional(),
+  ulw_execute: omoSectionSchema("ulw_execute").optional(),
+  default_mode: omoSectionSchema("default_mode").optional(),
 });
 
 export const AgentConfigSchema = z.object({
