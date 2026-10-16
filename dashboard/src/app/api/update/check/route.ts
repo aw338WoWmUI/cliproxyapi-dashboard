@@ -199,7 +199,8 @@ export async function GET(request: NextRequest) {
 
     const versionNames = versionedTags.map((t) => t.name);
 
-    const updateAvailable = latestDigest !== "unknown" && 
+    const patchRelease = resolvedCurrentVersion.match(/^(v\d+\.\d+\.\d+)-[a-f0-9]{7,40}$/)?.[1];
+    const updateAvailable = !(patchRelease && patchRelease === versionNames[0]) && latestDigest !== "unknown" &&
       current.digest !== "unknown" && 
       latestDigest !== current.digest;
 

@@ -8,7 +8,15 @@
  * @see https://github.com/alvinunreal/oh-my-opencode-slim
  */
 
+import type { z } from "zod";
+
 import { boundedObject, boundedStrings, isRecord, oneOf } from "@/lib/utils";
+import {
+  SlimAcpAgentsSchema,
+  SlimBackgroundJobsSchema,
+  SlimCompanionSchema,
+  SlimWebfetchSchema,
+} from "@/lib/validation/slim-upstream";
 
 // ============================================================================
 // CONSTANTS
@@ -75,9 +83,9 @@ export const SLIM_BUNDLED_SKILLS = [
 ] as const;
 
 const SLIM_PERMISSION_VALUES = ["ask", "allow", "deny"] as const;
-const SLIM_INHERIT_MODEL_FROM = ["session", "orchestrator"] as const;
-const SLIM_IMAGE_ROUTING = ["auto", "direct"] as const;
-const SLIM_DEEPWORK_GUARD_MODES = ["shadow", "enforce"] as const;
+export const SLIM_INHERIT_MODEL_FROM = ["session", "orchestrator"] as const;
+export const SLIM_IMAGE_ROUTING = ["auto", "direct"] as const;
+export const SLIM_DEEPWORK_GUARD_MODES = ["shadow", "enforce"] as const;
 
 /** Upstream default for `fallback.maxRetries` */
 export const SLIM_DEFAULT_MAX_RETRIES = 3;
@@ -144,26 +152,13 @@ export type SlimPermission =
   | Record<string, SlimPermissionValue | Record<string, SlimPermissionValue>>;
 
 /**
- * A named preset containing agent configurations.
- * Presets allow switching between different model/config combinations.
- * Can contain standard agents plus any explicitly configured advanced agents.
- * Stored flat: upstream's `{ extends, agents: {...} }` wrapper form is unwrapped on read.
+ * A named preset: its agents, plus the preset it inherits from. Matches upstream's
+ * `{ extends, agents: {...} }` wrapper form; the flat form is wrapped on read.
  */
 export interface SlimPreset {
   /** Name of the preset this one inherits from */
   extends?: string;
-  orchestrator?: SlimAgentConfig;
-  oracle?: SlimAgentConfig;
-  designer?: SlimAgentConfig;
-  explorer?: SlimAgentConfig;
-  librarian?: SlimAgentConfig;
-  fixer?: SlimAgentConfig;
-  council?: SlimAgentConfig;
-  // Allow explicit advanced agent configs
-  observer?: SlimAgentConfig;
-  councillor?: SlimAgentConfig;
-  // Allow any other advanced agent keys
-  [key: string]: SlimAgentConfig | string | undefined;
+  agents: Record<string, SlimAgentConfig>;
 }
 
 export interface SlimFallbackConfig {
@@ -246,13 +241,19 @@ export interface OhMyOpenCodeSlimFullConfig {
   disabled_skills?: string[];
   disabled_hooks?: string[];
   disabled_commands?: string[];
-  // ponytail: kept as opaque objects (size-bounded, not validated field by field); add typed
-  // validators when the dashboard grows UI for them.
-  backgroundJobs?: Record<string, unknown>;
-  companion?: Record<string, unknown>;
-  webfetch?: Record<string, unknown>;
-  acpAgents?: Record<string, unknown>;
+  backgroundJobs?: z.infer<typeof SlimBackgroundJobsSchema>;
+  companion?: z.infer<typeof SlimCompanionSchema>;
+  webfetch?: z.infer<typeof SlimWebfetchSchema>;
+  acpAgents?: z.infer<typeof SlimAcpAgentsSchema>;
 }
+
+/** Raw-JSON-only objects, checked against the upstream shape on read. */
+const SLIM_UPSTREAM_OBJECTS = {
+  backgroundJobs: SlimBackgroundJobsSchema,
+  companion: SlimCompanionSchema,
+  webfetch: SlimWebfetchSchema,
+  acpAgents: SlimAcpAgentsSchema,
+};
 
 /** Top-level keys the generator copies to the output unchanged. */
 export const SLIM_PASSTHROUGH_KEYS = [
@@ -400,7 +401,7 @@ export function validateSlimConfig(raw: unknown): OhMyOpenCodeSlimFullConfig {
     for (const [presetName, presetVal] of Object.entries(presetsObj)) {
       if (typeof presetName !== "string" || presetName.length > 128) continue;
       if (!isRecord(presetVal)) continue;
-      const preset: SlimPreset = {};
+      const preset: SlimPreset = { agents: {} };
       if (typeof presetVal.extends === "string" && presetVal.extends.length >= 1 && presetVal.extends.length <= 128) {
         preset.extends = presetVal.extends;
       }
@@ -410,7 +411,7 @@ export function validateSlimConfig(raw: unknown): OhMyOpenCodeSlimFullConfig {
         // `marketplace` (agent packages) is not supported by the dashboard and is not an agent.
         if (agentName.length > 128 || agentName === "extends" || agentName === "marketplace") continue;
         if (typeof agentVal !== "object" || agentVal === null || Array.isArray(agentVal)) continue;
-        preset[agentName] = validateAgentConfig(agentVal as Record<string, unknown>);
+        preset.agents[agentName] = validateAgentConfig(agentVal as Record<string, unknown>);
       }
       // Preserve empty presets so the UI can create/select a preset before any agents are configured.
       validatedPresets[presetName] = preset;
@@ -576,9 +577,10 @@ export function validateSlimConfig(raw: unknown): OhMyOpenCodeSlimFullConfig {
     if (list?.length) result[key] = list;
   }
 
-  for (const key of ["backgroundJobs", "companion", "webfetch", "acpAgents"] as const) {
-    const value = boundedObject(obj[key]);
-    if (value) result[key] = value;
+  // A stored value that no longer fits upstream is dropped; slim would reject the whole file otherwise.
+  for (const [key, schema] of Object.entries(SLIM_UPSTREAM_OBJECTS)) {
+    const parsed = schema.safeParse(boundedObject(obj[key]));
+    if (parsed.success) Object.assign(result, { [key]: parsed.data });
   }
 
   return result;
