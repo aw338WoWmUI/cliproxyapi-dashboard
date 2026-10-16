@@ -95,8 +95,8 @@ function additionalLimitScope(
   position: number,
   usedIds: Set<string>
 ): QuotaGroupScope {
-  const meteredFeature = limit.metered_feature?.trim() ?? "";
-  const limitName = limit.limit_name?.trim() ?? "";
+  const meteredFeature = typeof limit.metered_feature === "string" ? limit.metered_feature.trim() : "";
+  const limitName = typeof limit.limit_name === "string" ? limit.limit_name.trim() : "";
   const label = limitName || meteredFeature || `Additional Limit ${position}`;
   const baseId = slugifyLabel(meteredFeature) || slugifyLabel(limitName) || `additional-${position}`;
 
@@ -110,8 +110,9 @@ export function parseCodexQuota(data: CodexWhamUsageResponse): QuotaGroup[] {
   const groups = parseCodexRateLimit(data.rate_limit);
   const usedScopeIds = new Set<string>([CODE_REVIEW_SCOPE.id]);
 
-  (data.additional_rate_limits ?? []).forEach((limit, index) => {
-    if (!limit) return;
+  const additionalLimits = Array.isArray(data.additional_rate_limits) ? data.additional_rate_limits : [];
+  additionalLimits.forEach((limit, index) => {
+    if (!limit || typeof limit !== "object" || Array.isArray(limit)) return;
     groups.push(...parseCodexRateLimit(limit.rate_limit, additionalLimitScope(limit, index + 1, usedScopeIds)));
   });
 

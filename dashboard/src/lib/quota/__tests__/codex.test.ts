@@ -9,6 +9,12 @@ function weekly(usedPercent: number) {
 }
 
 describe("parseCodexQuota", () => {
+  it.each([{ additional: {} }, { additional: "unexpected" }, { additional: [null, 42, { metered_feature: 42, limit_name: {} }] }])
+    ("keeps main limits when additional usage data is malformed: %j", ({ additional }) => {
+      const payload = JSON.parse(JSON.stringify({ rate_limit: weekly(10), additional_rate_limits: additional }));
+      expect(parseCodexQuota(payload)).toMatchObject([{ id: "primary-window", remainingFraction: 0.9 }]);
+    });
+
   it("leaves the main limit unscoped and scopes additional and code review limits", () => {
     const groups = parseCodexQuota({
       rate_limit: weekly(10),

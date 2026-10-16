@@ -58,7 +58,7 @@ function getQuotaAccountStatus(account: QuotaAccount): QuotaQueryStatus {
     if (isModelFirstAccountQuotaUnverified(account)) return "warning";
   }
 
-  const fractions = (account.groups ?? [])
+  const fractions = headlineQuotaWindows(account.groups ?? [])
     .map((group) => {
       const normalizedGroup = isModelFirstAccount(account) ? enrichModelFirstGroup(group) : group;
       return normalizeFraction(normalizedGroup.minRemainingFraction ?? normalizedGroup.remainingFraction);
