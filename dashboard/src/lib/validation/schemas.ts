@@ -1,5 +1,19 @@
 import { z } from "zod";
 import {
+  SLIM_DEEPWORK_GUARD_MODES,
+  SLIM_IMAGE_ROUTING,
+  SLIM_INHERIT_MODEL_FROM,
+  SLIM_MULTIPLEXER_TYPES,
+  SLIM_TMUX_LAYOUTS,
+} from "@/lib/config-generators/oh-my-opencode-slim-types";
+import {
+  SlimAcpAgentsSchema,
+  SlimBackgroundJobsSchema,
+  SlimCompanionSchema,
+  SlimModelEntrySchema,
+  SlimWebfetchSchema,
+} from "@/lib/validation/slim-upstream";
+import {
   PASSWORD_MIN_LENGTH,
   PASSWORD_MAX_LENGTH,
 } from "@/lib/auth/validation";
@@ -188,22 +202,13 @@ export const AgentConfigSchema = z.object({
 // ============================================================================
 
 const SlimAgentEntrySchema = z.object({
-  model: z.union([
-    z.string(),
-    z.array(z.union([
-      z.string(),
-      z.object({
-        id: z.string(),
-        variant: z.string().optional(),
-      })
-    ]))
-  ]).optional(),
+  model: z.union([z.string(), z.array(SlimModelEntrySchema)]).optional(),
   temperature: z.number().min(0).max(2).optional(),
   variant: z.string().optional(),
   skills: z.array(z.string()).optional(),
   mcps: z.array(z.string()).optional(),
   options: z.record(z.string(), z.unknown()).optional(),
-  inheritModelFrom: z.enum(["session", "orchestrator"]).optional(),
+  inheritModelFrom: z.enum(SLIM_INHERIT_MODEL_FROM).optional(),
   skills_add: z.array(z.string()).optional(),
   skills_remove: z.array(z.string()).optional(),
   skills_include_local: z.boolean().optional(),
@@ -246,8 +251,8 @@ const SlimPresetSchema = z.union([
 ]);
 
 const SlimMultiplexerSchema = z.object({
-  type: z.enum(["auto", "tmux", "zellij", "none"]).optional(),
-  layout: z.enum(["main-horizontal", "main-vertical", "tiled", "even-horizontal", "even-vertical"]).optional(),
+  type: z.enum(SLIM_MULTIPLEXER_TYPES).optional(),
+  layout: z.enum(SLIM_TMUX_LAYOUTS).optional(),
   main_pane_size: z.number().min(20).max(80).optional(),
 });
 
@@ -276,17 +281,17 @@ const SlimConfigOverridesSchema = z.object({
   stripOrchestratorModel: z.boolean().optional(),
   routingBlock: z.boolean().optional(),
   autoUpdate: z.boolean().optional(),
-  image_routing: z.enum(["auto", "direct"]).optional(),
-  deepworkGuardMode: z.enum(["shadow", "enforce"]).optional(),
+  image_routing: z.enum(SLIM_IMAGE_ROUTING).optional(),
+  deepworkGuardMode: z.enum(SLIM_DEEPWORK_GUARD_MODES).optional(),
   disabled_tools: z.array(z.string()).optional(),
   disabled_skills: z.array(z.string()).optional(),
   // Unknown hook/command names are dropped by validateSlimConfig, as upstream does.
   disabled_hooks: z.array(z.string()).optional(),
   disabled_commands: z.array(z.string()).optional(),
-  backgroundJobs: z.record(z.string(), z.unknown()).optional(),
-  companion: z.record(z.string(), z.unknown()).optional(),
-  webfetch: z.record(z.string(), z.unknown()).optional(),
-  acpAgents: z.record(z.string(), z.unknown()).optional(),
+  backgroundJobs: SlimBackgroundJobsSchema.optional(),
+  companion: SlimCompanionSchema.optional(),
+  webfetch: SlimWebfetchSchema.optional(),
+  acpAgents: SlimAcpAgentsSchema.optional(),
 });
 
 export const SlimAgentConfigSchema = z.object({

@@ -83,10 +83,11 @@ function processModelConfig(
  * 
  * Model resolution priority:
  * 1. If override.model is provided → process and prefix if available
- * 2. If no override → pick best model from availableModels based on tier
- * 
+ * 2. If override.inheritModelFrom is set → no model and no default variant (upstream inherits)
+ * 3. Otherwise → pick best model from availableModels based on tier
+ *
  * Supports both string and array model configurations.
- * Returns null if no model can be resolved and no override is provided.
+ * Returns null if no model can be picked for a non-inheriting agent without a model override.
  */
 function buildAgentEntry(
   agent: string,
@@ -95,7 +96,12 @@ function buildAgentEntry(
 ): SlimAgentConfig | null {
   const role = SLIM_AGENT_ROLES[agent];
   const overrideModel = override?.model;
-  
+
+  // Upstream lets a scalar model beat inheritance, so an inheriting agent gets no auto-pick or default variant.
+  if (override?.inheritModelFrom !== undefined && overrideModel === undefined) {
+    return copyAgentFields(override, availableModels);
+  }
+
   let model: SlimModelConfig;
   if (overrideModel !== undefined) {
     // User specified a model override — process it
@@ -163,7 +169,8 @@ function normalizeExplicitAgentConfig(
 /**
  * Slim 2.0.2 removed `fallback.chains`; an agent's array `model` is now its fallback chain.
  * Folds each stored chain into the matching agent's model as `[primary, ...chain]`, deduped by id.
- * Agents without an emitted model are skipped (there is no primary to put first).
+ * An inheriting agent without a model gets the chain alone (upstream follows the inherited model and
+ * uses the array as its fallback); other agents without an emitted model are skipped.
  */
 function foldFallbackChains(
   agents: Record<string, SlimAgentConfig>,
@@ -172,9 +179,10 @@ function foldFallbackChains(
 ): void {
   for (const [agent, chain] of Object.entries(chains)) {
     const entry = agents[agent];
-    if (entry?.model === undefined) continue;
+    if (entry === undefined) continue;
+    if (entry.model === undefined && (entry.inheritModelFrom === undefined || chain.length === 0)) continue;
     const seen = new Set<string>();
-    const primary = typeof entry.model === "string" ? [entry.model] : entry.model;
+    const primary = [entry.model ?? []].flat();
     entry.model = [...primary, ...chain.map((m) => prefixModel(m, availableModels))].filter((item) => {
       const id = typeof item === "string" ? item : item.id;
       if (seen.has(id)) return false;
@@ -184,9 +192,24 @@ function foldFallbackChains(
   }
 }
 
+/**
+ * Upstream merges an overlay entry (root `agents`, extending preset) over its base and keeps the base's
+ * variant. An inheriting entry without a scalar model gets `variant: ""` so the base's default is cancelled.
+ * Run after `foldFallbackChains`, which can turn an inheriting agent's model into an array.
+ */
+function cancelBaseVariants(agents: Record<string, SlimAgentConfig>): void {
+  for (const entry of Object.values(agents)) {
+    if (entry.inheritModelFrom !== undefined && typeof entry.model !== "string" && entry.variant === undefined) {
+      entry.variant = "";
+    }
+  }
+}
+
 // ---------------------------------------------------------------------------
 // Main config builder
 // ---------------------------------------------------------------------------
+
+const DEFAULT_PRESET_NAME = "cliproxyapi";
 
 export interface BuildSlimConfigOptions {
   /** Name of the preset to generate (default: "cliproxyapi") */
@@ -208,7 +231,7 @@ export function buildSlimConfig(
   overrides?: OhMyOpenCodeSlimFullConfig,
   options?: BuildSlimConfigOptions,
 ): Record<string, unknown> | null {
-  const { presetName: optionsPresetName = "cliproxyapi", usePresets = true } = options ?? {};
+  const { presetName: optionsPresetName = DEFAULT_PRESET_NAME, usePresets = true } = options ?? {};
 
   // Active preset selection: overrides.preset first, then options.presetName, then "cliproxyapi"
   const activePresetName = overrides?.preset ?? optionsPresetName;
@@ -224,6 +247,10 @@ export function buildSlimConfig(
     const presets: Record<string, Record<string, unknown>> = Object.create(null);
     const explicitPresets = overrides?.presets ?? {};
     const presetNames = new Set<string>([activePresetName, ...Object.keys(explicitPresets)]);
+    // The default preset exists in the dashboard even when never stored; slim rejects a missing parent.
+    if (Object.values(explicitPresets).some((preset) => preset.extends === DEFAULT_PRESET_NAME)) {
+      presetNames.add(DEFAULT_PRESET_NAME);
+    }
 
     for (const presetName of presetNames) {
       const presetOverride = explicitPresets[presetName];
@@ -233,7 +260,7 @@ export function buildSlimConfig(
       // Auto-assign the 7 primary agents for every dashboard-managed preset. An extending preset
       // only carries what the user set; everything else is inherited upstream.
       for (const agent of extendsPreset === undefined ? SLIM_AGENTS : []) {
-        const presetAgentOverride = presetOverride?.[agent];
+        const presetAgentOverride = presetOverride?.agents[agent];
         const rootModelFallback =
           availableModels.length === 0 && presetAgentOverride?.model === undefined
             ? overrides?.agents?.[agent]
@@ -250,7 +277,7 @@ export function buildSlimConfig(
       }
 
       // Preserve explicitly configured advanced agents without inventing defaults for them.
-      for (const [agentKey, agentConfig] of Object.entries(presetOverride ?? {})) {
+      for (const [agentKey, agentConfig] of Object.entries(presetOverride?.agents ?? {})) {
         if (extendsPreset === undefined && SLIM_AGENTS.includes(agentKey as typeof SLIM_AGENTS[number])) continue;
         const normalized = normalizeExplicitAgentConfig(agentKey, agentConfig, availableModels);
         if (normalized) {
@@ -259,6 +286,7 @@ export function buildSlimConfig(
       }
 
       foldFallbackChains(presetOut, chains, availableModels);
+      if (extendsPreset !== undefined) cancelBaseVariants(presetOut);
       presets[presetName] = extendsPreset === undefined ? presetOut : { extends: extendsPreset, ...presetOut };
     }
 
@@ -276,6 +304,7 @@ export function buildSlimConfig(
       }
       if (Object.keys(rootAgents).length > 0) {
         foldFallbackChains(rootAgents, chains, availableModels);
+        cancelBaseVariants(rootAgents);
         config.agents = rootAgents;
       }
     }
@@ -369,6 +398,34 @@ export function buildSlimConfig(
   }
 
   return config;
+}
+
+/**
+ * The primary model slim resolves for `agent` in `presetName`, following `extends` through a
+ * generated config. Undefined when the chain leaves the config (a parent defined only in a
+ * project config), cycles, or ends in `inheritModelFrom` without a model.
+ */
+export function resolveInheritedModel(
+  config: Record<string, unknown>,
+  presetName: string,
+  agent: string,
+): string | undefined {
+  const presets = config.presets as Record<string, Record<string, unknown>> | undefined;
+  const seen = new Set<string>();
+  let current: string | undefined = presetName;
+  while (current !== undefined && !seen.has(current)) {
+    seen.add(current);
+    const preset: Record<string, unknown> | undefined = presets?.[current];
+    if (preset === undefined) return undefined;
+    const entry = preset[agent] as SlimAgentConfig | undefined;
+    if (entry?.model !== undefined) {
+      const primary = [entry.model].flat()[0];
+      return typeof primary === "string" ? primary : primary?.id;
+    }
+    if (entry?.inheritModelFrom !== undefined) return undefined;
+    current = typeof preset.extends === "string" ? preset.extends : undefined;
+  }
+  return undefined;
 }
 
 // Re-export shared utilities needed by components

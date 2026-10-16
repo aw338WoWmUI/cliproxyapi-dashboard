@@ -1,10 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { buildSlimConfig } from "./helpers/slim-schema-guard";
+import { buildSlimConfigChecked, type GeneratedSlimConfig } from "./helpers/slim-schema-guard";
 import { validateSlimConfig, type OhMyOpenCodeSlimFullConfig } from "../config-generators/oh-my-opencode-slim-types";
 
-function expectGeneratedConfig(config: ReturnType<typeof buildSlimConfig>): OhMyOpenCodeSlimFullConfig {
+function expectGeneratedConfig(config: ReturnType<typeof buildSlimConfigChecked>): GeneratedSlimConfig {
   expect(config).not.toBeNull();
-  return config as OhMyOpenCodeSlimFullConfig;
+  return config as GeneratedSlimConfig;
 }
 
 describe("buildSlimConfig fallback chains - folded into each agent's model array", () => {
@@ -12,7 +12,7 @@ describe("buildSlimConfig fallback chains - folded into each agent's model array
 
   it("passes through external models (not in available) without prefix", () => {
     const overrides: OhMyOpenCodeSlimFullConfig = {
-      presets: { cliproxyapi: { orchestrator: { model: "claude-sonnet-4" } } },
+      presets: { cliproxyapi: { agents: { orchestrator: { model: "claude-sonnet-4" } } } },
       fallback: {
         enabled: true,
         chains: {
@@ -21,7 +21,7 @@ describe("buildSlimConfig fallback chains - folded into each agent's model array
       },
     };
 
-    const generated = expectGeneratedConfig(buildSlimConfig(available, overrides));
+    const generated = expectGeneratedConfig(buildSlimConfigChecked(available, overrides));
 
     expect(generated.fallback).not.toHaveProperty("chains");
     expect(generated.presets?.cliproxyapi?.orchestrator?.model).toEqual([
@@ -33,7 +33,7 @@ describe("buildSlimConfig fallback chains - folded into each agent's model array
 
   it("mixed available/external chains — available get prefixed, external pass through", () => {
     const overrides: OhMyOpenCodeSlimFullConfig = {
-      presets: { cliproxyapi: { orchestrator: { model: "claude-sonnet-4" }, fixer: { model: "gemini-2.5-pro" } } },
+      presets: { cliproxyapi: { agents: { orchestrator: { model: "claude-sonnet-4" }, fixer: { model: "gemini-2.5-pro" } } } },
       fallback: {
         enabled: true,
         chains: {
@@ -43,7 +43,7 @@ describe("buildSlimConfig fallback chains - folded into each agent's model array
       },
     };
 
-    const generated = expectGeneratedConfig(buildSlimConfig(available, overrides));
+    const generated = expectGeneratedConfig(buildSlimConfigChecked(available, overrides));
 
     expect(generated.presets?.cliproxyapi?.fixer?.model).toEqual([
       "cliproxyapi/gemini-2.5-pro",
@@ -60,7 +60,7 @@ describe("buildSlimConfig fallback chains - folded into each agent's model array
     const overrides: OhMyOpenCodeSlimFullConfig = {
       presets: {
         cliproxyapi: {
-          orchestrator: { model: ["claude-sonnet-4", { id: "gemini-2.5-pro", variant: "high" }] },
+          agents: { orchestrator: { model: ["claude-sonnet-4", { id: "gemini-2.5-pro", variant: "high" }] } },
         },
       },
       fallback: {
@@ -71,7 +71,7 @@ describe("buildSlimConfig fallback chains - folded into each agent's model array
       },
     };
 
-    const generated = expectGeneratedConfig(buildSlimConfig(available, overrides));
+    const generated = expectGeneratedConfig(buildSlimConfigChecked(available, overrides));
 
     expect(generated.presets?.cliproxyapi?.orchestrator?.model).toEqual([
       "cliproxyapi/claude-sonnet-4",
@@ -82,11 +82,11 @@ describe("buildSlimConfig fallback chains - folded into each agent's model array
 
   it("does not fold chains when fallback is disabled", () => {
     const overrides: OhMyOpenCodeSlimFullConfig = {
-      presets: { cliproxyapi: { orchestrator: { model: "claude-sonnet-4" } } },
+      presets: { cliproxyapi: { agents: { orchestrator: { model: "claude-sonnet-4" } } } },
       fallback: { enabled: false, chains: { orchestrator: ["gemini-2.5-pro"] } },
     };
 
-    const generated = expectGeneratedConfig(buildSlimConfig(available, overrides));
+    const generated = expectGeneratedConfig(buildSlimConfigChecked(available, overrides));
 
     expect(generated.presets?.cliproxyapi?.orchestrator?.model).toBe("cliproxyapi/claude-sonnet-4");
     expect(generated.fallback).toEqual({ enabled: false, retryDelayMs: 500 });
@@ -98,10 +98,10 @@ describe("buildSlimConfig fallback chains - folded into each agent's model array
       fallback: { chains: { oracle: ["claude-sonnet-4"] } },
     };
 
-    const presetConfig = expectGeneratedConfig(buildSlimConfig(available, overrides));
+    const presetConfig = expectGeneratedConfig(buildSlimConfigChecked(available, overrides));
     expect(presetConfig.agents?.oracle?.model).toEqual(["cliproxyapi/gemini-2.5-pro", "cliproxyapi/claude-sonnet-4"]);
 
-    const legacyConfig = expectGeneratedConfig(buildSlimConfig(available, overrides, { usePresets: false }));
+    const legacyConfig = expectGeneratedConfig(buildSlimConfigChecked(available, overrides, { usePresets: false }));
     expect(legacyConfig.agents?.oracle?.model).toEqual(["cliproxyapi/gemini-2.5-pro", "cliproxyapi/claude-sonnet-4"]);
     expect(legacyConfig.fallback).not.toHaveProperty("chains");
   });
@@ -119,7 +119,7 @@ describe("buildSlimConfig - advanced field preservation", () => {
       },
     };
 
-    const config = buildSlimConfig(available, overrides);
+    const config = buildSlimConfigChecked(available, overrides);
     const generated = expectGeneratedConfig(config);
     expect(generated.interview).toBeDefined();
     expect(generated.interview?.dashboard).toBe(true);
@@ -137,7 +137,7 @@ describe("buildSlimConfig - advanced field preservation", () => {
       },
     });
 
-    const config = buildSlimConfig(available, overrides);
+    const config = buildSlimConfigChecked(available, overrides);
     const generated = expectGeneratedConfig(config);
     expect(generated.fallback).toEqual({ enabled: true, retryDelayMs: 250 });
   });
@@ -145,7 +145,7 @@ describe("buildSlimConfig - advanced field preservation", () => {
   it("should fail fast when no models available and no overrides", () => {
     // With empty availableModels and no model overrides, we cannot build valid config
     // This is the correct fail-fast behavior
-    const config = buildSlimConfig([]);
+    const config = buildSlimConfigChecked([]);
 
     // Config should be null when we can't resolve any models
     expect(config).toBeNull();
@@ -153,7 +153,7 @@ describe("buildSlimConfig - advanced field preservation", () => {
 
   it("should build config when models provided via overrides even with empty available", () => {
     // If user provides explicit model overrides, those are passed through
-    const config = buildSlimConfig([], {
+    const config = buildSlimConfigChecked([], {
       agents: {
         orchestrator: { model: "external/claude-3.5" },
         oracle: { model: "external/gpt-4" },

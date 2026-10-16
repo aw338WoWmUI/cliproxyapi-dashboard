@@ -12,19 +12,18 @@ import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/toast";
 import { API_ENDPOINTS } from "@/lib/api-endpoints";
 import {
-  SLIM_AGENT_ROLES,
   buildSlimConfig,
-  pickBestModel,
+  resolveInheritedModel,
   type ConfigData,
   type OAuthAccount,
 } from "@/lib/config-generators/oh-my-opencode-slim";
+import { buildSlimAgentAssignments } from "@/lib/config-generators/oh-my-opencode-slim-assignments";
 import {
   validateSlimConfig,
   type OhMyOpenCodeSlimFullConfig,
   type SlimAgentConfig,
   type SlimFallbackConfig,
   type SlimCouncilConfig,
-  type SlimPreset,
   type SlimMultiplexerConfig,
   type SlimInterviewConfig,
 } from "@/lib/config-generators/oh-my-opencode-slim-types";
@@ -125,16 +124,18 @@ export function OhMyOpenCodeSlimConfigGenerator(props: OhMyOpenCodeSlimConfigGen
     return [DEFAULT_PRESET_NAME, ...names];
   }, [activePreset, overrides.presets]);
 
+  const currentPreset = overrides.presets?.[activePreset];
+  const inheritedFrom = editingConfig === "preset" ? currentPreset?.extends : undefined;
   const currentEditableAgents = useMemo<Record<string, SlimAgentConfig>>(
-    () => editingConfig === "preset"
-      ? ((overrides.presets?.[activePreset] ?? {}) as Record<string, SlimAgentConfig>)
-      : (overrides.agents ?? {}),
-    [activePreset, editingConfig, overrides.agents, overrides.presets],
+    () => editingConfig === "preset" ? (currentPreset?.agents ?? {}) : (overrides.agents ?? {}),
+    [currentPreset, editingConfig, overrides.agents],
   );
 
   useEffect(() => {
-    setAgentJsonDraft(JSON.stringify(currentEditableAgents, null, 2));
-  }, [currentEditableAgents]);
+    // The preset draft uses upstream's flat form so `extends` stays editable next to the agents.
+    const draft = inheritedFrom === undefined ? currentEditableAgents : { extends: inheritedFrom, ...currentEditableAgents };
+    setAgentJsonDraft(JSON.stringify(draft, null, 2));
+  }, [currentEditableAgents, inheritedFrom]);
 
   const slimConfig = hasModels
     ? buildSlimConfig(availableModelIds, overrides, { presetName: activePreset })
@@ -147,8 +148,8 @@ export function OhMyOpenCodeSlimConfigGenerator(props: OhMyOpenCodeSlimConfigGen
 
       if (editingConfig === "preset") {
         const nextPresets = { ...(overrides.presets ?? {}) };
-        if (Object.keys(nextAgents).length > 0) {
-          nextPresets[activePreset] = nextAgents as SlimPreset;
+        if (Object.keys(nextAgents).length > 0 || currentPreset?.extends !== undefined) {
+          nextPresets[activePreset] = { ...currentPreset, agents: nextAgents };
         } else {
           delete nextPresets[activePreset];
         }
@@ -166,14 +167,14 @@ export function OhMyOpenCodeSlimConfigGenerator(props: OhMyOpenCodeSlimConfigGen
         agents: Object.keys(nextAgents).length > 0 ? nextAgents : undefined,
       });
     },
-    [activePreset, commitOverrides, currentEditableAgents, editingConfig, overrides],
+    [activePreset, commitOverrides, currentEditableAgents, currentPreset, editingConfig, overrides],
   );
 
   const createPreset = (name: string) => {
     const trimmed = name.trim();
     if (!trimmed || presetNames.includes(trimmed)) return false;
 
-    const nextPresets = { ...(overrides.presets ?? {}), [trimmed]: {} as SlimPreset };
+    const nextPresets = { ...(overrides.presets ?? {}), [trimmed]: { agents: {} } };
     setActivePreset(trimmed);
     setEditingConfig("preset");
     commitOverrides({
@@ -293,7 +294,7 @@ export function OhMyOpenCodeSlimConfigGenerator(props: OhMyOpenCodeSlimConfigGen
         const nextPreset = sanitized.presets?.[activePreset];
         const nextPresets = { ...(overrides.presets ?? {}) };
 
-        if (nextPreset && Object.keys(nextPreset).length > 0) {
+        if (nextPreset && (Object.keys(nextPreset.agents).length > 0 || nextPreset.extends !== undefined)) {
           nextPresets[activePreset] = nextPreset;
         } else {
           delete nextPresets[activePreset];
@@ -410,59 +411,13 @@ export function OhMyOpenCodeSlimConfigGenerator(props: OhMyOpenCodeSlimConfigGen
     );
   }
 
-  const agentAssignments: Array<{
-    name: string;
-    model: string;
-    isOverride: boolean;
-    isUnresolved?: boolean;
-    config: SlimAgentConfig;
-    tier: 1 | 2 | 3 | 4;
-    label: string;
-  }> = [];
-
-  for (const [agent, role] of Object.entries(SLIM_AGENT_ROLES)) {
-    const agentConfig = currentEditableAgents[agent] ?? {};
-    const overrideModel = agentConfig.model;
-
-    if (typeof overrideModel === "string" && availableModelIds.includes(overrideModel)) {
-      agentAssignments.push({
-        name: agent,
-        model: overrideModel,
-        isOverride: true,
-        isUnresolved: false,
-        config: agentConfig,
-        tier: role.tier,
-        label: role.label,
-      });
-      continue;
-    }
-
-    const model = pickBestModel(availableModelIds, role.tier);
-    if (model) {
-      agentAssignments.push({
-        name: agent,
-        model,
-        isOverride: overrideModel !== undefined,
-        isUnresolved: false,
-        config: agentConfig,
-        tier: role.tier,
-        label: role.label,
-      });
-      continue;
-    }
-
-    agentAssignments.push({
-      name: agent,
-      model: typeof overrideModel === "string" ? overrideModel : `unresolved-tier-${role.tier}` ,
-      isOverride: overrideModel !== undefined,
-      isUnresolved: true,
-      config: agentConfig,
-      tier: role.tier,
-      label: role.label,
-    });
-  }
-
-  agentAssignments.sort((a, b) => a.tier - b.tier || a.name.localeCompare(b.name));
+  const agentAssignments = buildSlimAgentAssignments({
+    agents: currentEditableAgents,
+    availableModelIds,
+    inheritedFrom,
+    resolveParentModel: (agent) => resolveInheritedModel(slimConfig, activePreset, agent),
+    inheritedModelLabel: t("inheritedModelUnknown"),
+  });
 
   const handleDownload = () => {
     if (configJson) {
