@@ -49,6 +49,19 @@ describe("resolveInheritedModel", () => {
     expect(resolveInheritedModel(config!, "review", "oracle")).toBeUndefined();
   });
 
+  it("does not promote inherited fallback arrays to a primary model", () => {
+    for (const inheritModelFrom of ["session", "orchestrator"]) {
+      const config = { presets: {
+        leaf: { extends: "base" },
+        base: { oracle: { inheritModelFrom, model: ["external/fallback"] } },
+      } };
+      expect(resolveInheritedModel(config, "leaf", "oracle")).toBeUndefined();
+    }
+    expect(resolveInheritedModel({ presets: { base: {
+      oracle: { inheritModelFrom: "session", model: "external/explicit" },
+    } } }, "base", "oracle")).toBe("external/explicit");
+  });
+
   it("returns undefined for an inheritance cycle", () => {
     const config = {
       presets: { a: { extends: "b" }, b: { extends: "a" } },

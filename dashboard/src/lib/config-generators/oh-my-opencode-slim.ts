@@ -418,6 +418,7 @@ export function resolveInheritedModel(
     const preset: Record<string, unknown> | undefined = presets?.[current];
     if (preset === undefined) return undefined;
     const entry = preset[agent] as SlimAgentConfig | undefined;
+    if (entry?.inheritModelFrom !== undefined && typeof entry.model !== "string") return undefined;
     if (entry?.model !== undefined) {
       const primary = [entry.model].flat()[0];
       return typeof primary === "string" ? primary : primary?.id;
