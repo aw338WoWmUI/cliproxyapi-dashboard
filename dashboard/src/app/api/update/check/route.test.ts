@@ -139,6 +139,19 @@ describe("GET /api/update/check", () => {
     expect(body.updateAvailable).toBe(false);
   });
 
+  it("does not replace a same-release patch build just because its digest differs", async () => {
+    mockDocker("local/cliproxyapi:v6.2.0-abcdef12", LOCAL_CONFIG_ID, []);
+    const { body } = await callRoute();
+    expect(body.currentVersion).toBe("v6.2.0-abcdef12");
+    expect(body.updateAvailable).toBe(false);
+  });
+
+  it("still offers a newer release for an older patch build", async () => {
+    mockDocker("local/cliproxyapi:v6.1.0-abcdef12", LOCAL_CONFIG_ID, []);
+    const { body } = await callRoute();
+    expect(body.updateAvailable).toBe(true);
+  });
+
   it("falls back to .Image when the image has no RepoDigests", async () => {
     mockDocker("eceasy/cli-proxy-api:latest", HUB_OLDER, []);
 
