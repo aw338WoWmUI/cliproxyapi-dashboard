@@ -39,6 +39,26 @@ function store(overrides: unknown) {
 }
 
 describe("OMO 5.x fields survive the dashboard", () => {
+  it.each([
+    ["goal", { enabled: "yes" }],
+    ["i18n", { locale: false }],
+    ["monitor", { max_monitors_per_session: 1.5 }],
+    ["team_mode", { max_members: 9 }],
+    ["keyword_detector", { disabled_keywords: ["unknown"] }],
+    ["tui", { sidebar: { enabled: "yes" } }],
+    ["ulw_execute", { auto_commit: "yes" }],
+    ["default_mode", { goal: "yes" }],
+  ])("rejects invalid %s at save and omits it from stored configs", (key, value) => {
+    expect(AgentConfigOverridesSchema.safeParse({ [key]: value }).success).toBe(false);
+    expect(validateFullConfig({ [key]: value })).not.toHaveProperty(key);
+  });
+
+  it.each(["goal", "i18n", "monitor", "team_mode", "keyword_detector", "tui", "ulw_execute", "default_mode"])
+    ("rejects unknown properties in %s", (key) => {
+      expect(AgentConfigOverridesSchema.safeParse({ [key]: { unexpected: true } }).success).toBe(false);
+      expect(validateFullConfig({ [key]: { unexpected: true } })).not.toHaveProperty(key);
+    });
+
   it("round-trips the new top-level keys and the new fields of existing sections", () => {
     const config = buildOhMyOpenCodeConfig(available, store({ ...NEW_TOP_LEVEL, ...NEW_NESTED }));
 

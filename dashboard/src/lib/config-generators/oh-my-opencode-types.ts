@@ -6,6 +6,7 @@
  */
 
 import { boundedObject, boundedStrings, isRecord, oneOf } from "@/lib/utils";
+import { isValidOmoSection } from "./upstream/omo-sections";
 
 import type { McpEntry } from "./opencode";
 
@@ -728,7 +729,7 @@ export function validateFullConfig(raw: unknown): OhMyOpenCodeFullConfig {
 
    for (const key of OPAQUE_KEYS) {
      const value = boundedObject(obj[key]);
-     if (value) result[key] = value;
+     if (value && isValidOmoSection(key, value)) result[key] = value;
    }
 
    return result;

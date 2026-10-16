@@ -189,6 +189,8 @@
     "claudeCodeApiKeysLink": "API 密钥",
     "claudeCodePageSuffix": "页面。",
     "modelSourceOAuthAlias": "OAuth 别名",
+    "omoNoticeTitle": "自 OMO 4.19.3 起，您的 OMO 设置未能生效",
+    "omoNoticeBody": "自 OMO 4.19.3（2026 年 7 月下旬）起，从此管理面板同步的代理和模型设置未能生效。同步插件会通过 @latest 自动更新并修复此问题：下次启动 OpenCode 后，您的设置将重新生效。",
     "quickStartTitle": "快速开始"
   },
   "settings": {

@@ -4,6 +4,7 @@ import {
   PASSWORD_MAX_LENGTH,
 } from "@/lib/auth/validation";
 import { DOCKER_TAG_PATTERN } from "@/lib/proxy-image-pin";
+import { isValidOmoSection } from "@/lib/config-generators/upstream/omo-sections";
 
 // ============================================================================
 // MODEL PREFERENCES
@@ -142,6 +143,9 @@ const RemoteMcpEntrySchema = z.object({
 
 const McpEntrySchema = z.union([LocalMcpEntrySchema, RemoteMcpEntrySchema]);
 
+const omoSectionSchema = (key: string) => z.record(z.string(), z.unknown())
+  .refine((value) => isValidOmoSection(key, value), `Invalid OMO ${key} configuration`);
+
 export const AgentConfigOverridesSchema = z.object({
   agents: z.record(z.string(), z.union([z.string(), AgentConfigEntrySchema])).optional(),
   categories: z.record(z.string(), z.union([z.string(), CategoryConfigEntrySchema])).optional(),
@@ -165,15 +169,14 @@ export const AgentConfigOverridesSchema = z.object({
   agent_definitions: z.array(z.string()).optional(),
   disabled_providers: z.array(z.string()).optional(),
   telemetry: z.boolean().optional(),
-  // Shape is checked upstream; validateFullConfig keeps these as size-bounded opaque objects.
-  goal: z.record(z.string(), z.unknown()).optional(),
-  i18n: z.record(z.string(), z.unknown()).optional(),
-  monitor: z.record(z.string(), z.unknown()).optional(),
-  team_mode: z.record(z.string(), z.unknown()).optional(),
-  keyword_detector: z.record(z.string(), z.unknown()).optional(),
-  tui: z.record(z.string(), z.unknown()).optional(),
-  ulw_execute: z.record(z.string(), z.unknown()).optional(),
-  default_mode: z.record(z.string(), z.unknown()).optional(),
+  goal: omoSectionSchema("goal").optional(),
+  i18n: omoSectionSchema("i18n").optional(),
+  monitor: omoSectionSchema("monitor").optional(),
+  team_mode: omoSectionSchema("team_mode").optional(),
+  keyword_detector: omoSectionSchema("keyword_detector").optional(),
+  tui: omoSectionSchema("tui").optional(),
+  ulw_execute: omoSectionSchema("ulw_execute").optional(),
+  default_mode: omoSectionSchema("default_mode").optional(),
 });
 
 export const AgentConfigSchema = z.object({
